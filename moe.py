@@ -8,7 +8,7 @@ https://arxiv.org/abs/2202.08906
 3) Our notepad of MoE resources: 
 https://docs.google.com/document/d/1NuQ5jr7V-Jv1ui7p4KrxO_JTz-7bpYcYMmh49EeJ-QA/edit?usp=sharing
 """
-
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -146,3 +146,64 @@ class ExpertChoiceMoE(nn.Module):
             "router_logits": router_logits,
             "selected_experts": selected_tokens,
         }
+
+
+class DummyExpert(nn.Module):
+    def __init__(self, output_size: int):
+        super().__init__()
+        self._output_size = output_size
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
+        return torch.zeros((self._output_size,), dtype=inputs.dtype, device=inputs.device)
+class MaskedMoE(MoE):
+    def __init__(self, config, mlp):
+        super().__init__(config, mlp)
+        self.experts.append(DummyExpert(config.n_embd))
+
+    def forward(self, inputs: torch.Tensor, mask: torch.Tensor):
+        # [batch_size * sequence_length, n_embd]
+        inputs_squashed = inputs.view(-1, inputs.shape[-1])
+        router_logits = self.router(inputs_squashed)
+        router_logits = router_logits*mask
+        sum_of_logits = router_logits.sum()
+        if sum_of_logits < 1e-20:
+            router_logits = torch.nn.functional.one_hot(mask.shape[0], num_classes= mask.shape[0]+1)
+        else:
+            router_logits = torch.cat((router_logits, torch.tensor([0])))
+        # note that selected experts will be the same for all orders:
+        # softmax doesnt change top-k, but the weights are different
+        if self.softmax_order == "softmax_topk":
+            all_probs = F.softmax(router_logits, dim=1, dtype=torch.float32)
+            weights, selected_experts = torch.topk(all_probs, self.top_k)
+        elif self.softmax_order == "topk_softmax":
+            weights, selected_experts = torch.topk(router_logits, self.top_k)
+            weights = F.softmax(weights, dim=-1, dtype=torch.float32)
+        else:
+            raise ValueError(f"Unknown softmax_order: {self.softmax_order}")
+
+        results = torch.zeros_like(inputs_squashed)
+        # naive looping over experts
+        for i, expert in enumerate(self.experts):
+            batch_idx, nth_expert = torch.where(selected_experts == i)
+            output, _ = expert(inputs_squashed[batch_idx])
+            results[batch_idx] += weights[batch_idx, nth_expert, None] * output
+
+        # return results and router logits (for aux loss calculation later)
+        return results.view_as(inputs), {
+            "router_logits": router_logits,
+            "selected_experts": selected_experts,
+        }
+
+class TimeDependantMoE(nn.Module):
+    def __init__(self, config, mlp, date_list, k):
+        super().__init__()
+        self._date_list = date_list
+        self._k = k
+        config.moe_num_experts = (len(date_list)+1)*k
+        self._mask_moe = MaskedMoE(config, mlp)
+
+
+    def forward(self, x, date):
+        date_idx = bisect.bisect_left(self.date_list, date)
+        mask = torch.zeros(self._k * (len(self._date_list)+1))
+        mask[0: (date_idx+1)*self._k] = 1.0
+        return self._mask_moe(x, mask)

@@ -18,7 +18,9 @@ import torch.nn as nn
 from torch.nn import functional as F
 
 from moe import (
-    ExpertChoiceMoE,
+    #ExpertChoiceMoE,
+    MaskedMoE2,
+    TimeDependantMoE2,
     MoE,
 )
 
@@ -139,8 +141,10 @@ class Block(nn.Module):
         if config.moe:
             if config.moe_routing == "standard_gating":
                 self.mlp = MoE(config, MLP)
-            elif config.moe_routing == "expert_choice":
-                self.mlp = ExpertChoiceMoE(config, MLP)
+            elif config.moe_routing == "masked":
+                self.mlp = TimeDependantMoE2(config, MLP)
+            #elif config.moe_routing == "expert_choice":
+            #    self.mlp = ExpertChoiceMoE(config, MLP)
             else:
                 raise ValueError(f"Unknown routing: {config.routing}")
         else:

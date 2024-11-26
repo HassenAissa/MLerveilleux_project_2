@@ -150,9 +150,9 @@ class Block(nn.Module):
         else:
             self.mlp = MLP(config)
 
-    def forward(self, x, *args, **kwargs):
+    def forward(self, x, date, *args, **kwargs):
         x = x + self.attn(self.ln_1(x, *args, **kwargs))
-        x_, logits_and_experts = self.mlp(self.ln_2(x, *args, **kwargs))
+        x_, logits_and_experts = self.mlp(self.ln_2(x, *args, **kwargs), date)
         x = x + x_
         return x, logits_and_experts
 
@@ -244,7 +244,7 @@ class GPTBase(nn.Module):
         elif isinstance(module, nn.Embedding):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
-    def forward(self, idx, targets=None, get_logits=False, moe=False):
+    def forward(self, idx, date, targets=None, get_logits=False, moe=False):
         device = idx.device
         b, t = idx.size()
         assert (
@@ -267,7 +267,7 @@ class GPTBase(nn.Module):
 
         # forward pass through all the transformer blocks
         for block in self.transformer.h:
-            x, logits_and_experts = block(x)
+            x, logits_and_experts = block(x, date)
             if len(logits_and_experts) > 0:
                 router_logits.append(logits_and_experts["router_logits"])
                 experts.append(logits_and_experts["selected_experts"])
@@ -282,7 +282,7 @@ class GPTBase(nn.Module):
             loss = F.cross_entropy(
                 logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1
             )
-            if moe and self.config.moe_routing == "standard_gating":
+            if moe and (self.config.moe_routing == "standard_gating" or self.config.moe_routing == "masked"):
                 # calculate the router losses per layer
                 for logit, expert_choice in zip(router_logits, experts):
                     router_losses = self.get_router_losses(

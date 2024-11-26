@@ -12,7 +12,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from datetime import datetime
 import bisect
 
 
@@ -30,7 +29,6 @@ class MoE(nn.Module):
     def __init__(self, config, mlp):
         super().__init__()
         assert config.moe_num_experts > 0
-        print(config.moe_num_experts)
         self.experts = nn.ModuleList(
             [mlp(config=config) for _ in range(config.moe_num_experts)]
         )
@@ -47,11 +45,11 @@ class MoE(nn.Module):
         # note that selected experts will be the same for all orders:
         # softmax doesnt change top-k, but the weights are different
         if self.softmax_order == "softmax_topk":
-            all_probs = F.softmax(router_logits, dim=1, dtype=torch.float32)
+            all_probs = F.softmax(router_logits, dim=1)
             weights, selected_experts = torch.topk(all_probs, self.top_k)
         elif self.softmax_order == "topk_softmax":
             weights, selected_experts = torch.topk(router_logits, self.top_k)
-            weights = F.softmax(weights, dim=-1, dtype=torch.float32)
+            weights = F.softmax(weights, dim=-1)
         else:
             raise ValueError(f"Unknown softmax_order: {self.softmax_order}")
 
@@ -74,7 +72,8 @@ class DummyExpert(nn.Module):
         super().__init__()
         self._output_size = output_size
     def forward(self, inputs: torch.Tensor) -> torch.Tensor:
-        return torch.zeros((self._output_size,), dtype=inputs.dtype, device=inputs.device)
+        out = torch.zeros((self._output_size,), device=inputs.device)
+        return out, {}
     
 class MaskedMoE(MoE):
     def __init__(self, config, mlp):
@@ -94,11 +93,11 @@ class MaskedMoE(MoE):
         # note that selected experts will be the same for all orders:
         # softmax doesnt change top-k, but the weights are different
         if self.softmax_order == "softmax_topk":
-            all_probs = F.softmax(router_logits, dim=1, dtype=torch.float32)
+            all_probs = F.softmax(router_logits, dim=1)
             weights, selected_experts = torch.topk(all_probs, self.top_k)
         elif self.softmax_order == "topk_softmax":
             weights, selected_experts = torch.topk(router_logits, self.top_k)
-            weights = F.softmax(weights, dim=-1, dtype=torch.float32)
+            weights = F.softmax(weights, dim=-1)
         else:
             raise ValueError(f"Unknown softmax_order: {self.softmax_order}")
 
@@ -134,23 +133,28 @@ class TimeDependantMoE(nn.Module):
 class MaskedMoE2(MoE):
     def __init__(self, config, mlp):
         super().__init__(config, mlp)
-        print("Dummy expert append")
         self.experts.append(DummyExpert(config.n_embd))
+        self.router = nn.Linear(config.n_embd, config.moe_num_experts+1, bias=False)
+
 
     def forward(self, inputs: torch.Tensor, mask: torch.Tensor):
         inputs_squashed = inputs.view(-1, inputs.shape[-1])
         router_logits = self.router(inputs_squashed)
-        mask = torch.cat((mask, torch.tensor([1])))
+        mask = torch.cat(
+            (mask, torch.ones((mask.shape[0], 1), device=mask.device)),
+            dim=1
+        )
+        mask = mask.repeat_interleave(1024, dim=0)
         router_logits = router_logits*mask
 
         # note that selected experts will be the same for all orders:
         # softmax doesnt change top-k, but the weights are different
         if self.softmax_order == "softmax_topk":
-            all_probs = F.softmax(router_logits, dim=1, dtype=torch.float32)
+            all_probs = F.softmax(router_logits, dim=1)
             weights, selected_experts = torch.topk(all_probs, self.top_k)
         elif self.softmax_order == "topk_softmax":
             weights, selected_experts = torch.topk(router_logits, self.top_k)
-            weights = F.softmax(weights, dim=-1, dtype=torch.float32)
+            weights = F.softmax(weights, dim=-1)
         else:
             raise ValueError(f"Unknown softmax_order: {self.softmax_order}")
 
@@ -169,17 +173,9 @@ class MaskedMoE2(MoE):
     
 
 class TimeDependantMoE2(nn.Module):
-    def __init__(self, config, mlp, k = 1):
+    def __init__(self, config, mlp):
         super().__init__()
-        self._date_list = config.date_list
-        self._k = k
-        config.moe_num_experts = (len(self._date_list)+1)*k
-        print("super init start")
         self._mask_moe = MaskedMoE2(config, mlp)
 
-
-    def forward(self, x, date):
-        date_idx = bisect.bisect_left(self.date_list, date)
-        mask = torch.zeros(date.shape[0], self._k * (len(self._date_list)+1))
-        mask[:, 0: (date_idx+1)*self._k] = 1.0
+    def forward(self, x, mask):
         return self._mask_moe(x, mask)

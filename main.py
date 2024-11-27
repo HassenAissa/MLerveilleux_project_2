@@ -1,18 +1,15 @@
-import numpy as np
 import datasets
 from gpt import GPTBase
-from moe import TimeDependantMoE2
 import torch
 import os
 from multiprocessing import cpu_count
 import tiktoken
 from datasets import load_dataset
-from datetime import datetime
 
 from config import Config
 from tqdm import tqdm
 import json
-from utils import save_checkpoint
+from utils import save_checkpoint, print_model_architecture
 
 torch.set_default_dtype(torch.bfloat16)
 
@@ -48,7 +45,6 @@ def get_fineweb_dataset(num_proc=num_proc):
     return tokenized, min_date, max_date
 
 
-print("Loading dataset...", end=" ")
 fineweb_dataset, min_date, max_date = get_fineweb_dataset()
 print("Dataset loaded")
 
@@ -61,16 +57,18 @@ config = Config(**{
     #"date_list": date_list,
 })
 
-print("Creating model...", end=" ")
 moe = GPTBase(config)
 moe.to(device)
 
+print_model_architecture(moe)
 
 # Training 
 nb_points = 100_000
+print(f"Training on {nb_points} data points")
+print("TODO: Compute number of tokens")
 
 optimizer = torch.optim.Adam(moe.parameters(), lr=1e-4)
-scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0, total_steps=nb_points)
+scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.01, total_iters=nb_points)
 
 losses = []
 loss = torch.tensor([-1])
@@ -78,7 +76,7 @@ best_loss = 1e9
 print("Starting training")
 for epoch in range(1):
     #for i in tqdm(range(0, len(fineweb_dataset["train"]), config.batch_size), desc=f"Loss = {loss.item()}"):
-    for i in tqdm(range(0, nb_points, config.batch_size), desc=f"Loss = {loss.item()}"):
+    for i in tqdm(range(0, nb_points, config.batch_size)):
         batch = fineweb_dataset["train"][i:i+config.batch_size]
         # make all batch["tokens"] the same length
         max_len = config.sequence_length
@@ -92,23 +90,26 @@ for epoch in range(1):
         optimizer.zero_grad()
 
         output = moe(batch["tokens"], batch["date"], 
-                     targets=batch["tokens"], get_logits=True, moe=True)
+                     targets=batch["tokens"], get_logits=False, moe=True)
         # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
         # loss = criterion(output, batch["tokens"])
         loss = output["loss"]
         loss.backward()
         optimizer.step()
         scheduler.step()
+
         del batch["tokens"]
         del batch["date"]
         torch.cuda.empty_cache()
         
-        tqdm.write(f"Loss: {loss.item()}")
+        #print(torch.cuda.memory_summary(device=device))
+
         if i % 1000 == 0:
+            print(f"Episode: {i}, Loss: {loss.item()}")
             losses.append(loss.item())
             if loss.item() < best_loss:
                 best_loss = loss.item()
-                save_checkpoint(moe, optimizer, None, i, "best_model.pth")
+                save_checkpoint(moe, optimizer, scheduler, i, "best_model.pth")
     
     print(f"Epoch: {epoch}, Loss: {loss.item()}")
 

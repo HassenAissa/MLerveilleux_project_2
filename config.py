@@ -18,8 +18,8 @@ class Config:
         self.moe_routing = "masked"
         self.moe_num_experts_per_tok = 2
         self.moe_router_loss = "load_balancing_z_loss"
-        self.moe_aux_loss_factor = 0.1
+        self.moe_aux_loss_factor = 0.01
         self.moe_z_loss_factor = 1
         self.routing = None
-        self.mlp_dim_exp_factor = 4
+        self.mlp_dim_exp_factor = 1
         

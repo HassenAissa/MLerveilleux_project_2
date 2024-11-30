@@ -48,70 +48,79 @@ def get_fineweb_dataset(num_proc=num_proc):
 fineweb_dataset, min_date, max_date = get_fineweb_dataset()
 print("Dataset loaded")
 
+moe_routings = [None, "standard_gating", "masked"]
+gradient_accumulation_steps = 4
+for moe_routing in moe_routings:
+    config = Config(**{
+        "moe_num_experts": max_date - min_date + 1,
+        "moe_softmax_order": "softmax_topk",
+        "batch_size": 64,
+        "n_embd": 768,
+        #"date_list": date_list,
+        "moe_routing": moe_routing,
+        "moe": moe_routing is not None
+    })
 
-config = Config(**{
-    "moe_num_experts": max_date - min_date + 1,
-    "moe_softmax_order": "softmax_topk",
-    "batch_size": 64,
-    "n_embd": 768,
-    #"date_list": date_list,
-})
+    moe = GPTBase(config)
+    moe.to(device)
 
-moe = GPTBase(config)
-moe.to(device)
+    # print_model_architecture(moe)
 
-print_model_architecture(moe)
-
-# Training 
-nb_points = 100_000
-print(f"Training on {nb_points} data points")
-print("TODO: Compute number of tokens")
-
-optimizer = torch.optim.Adam(moe.parameters(), lr=1e-4)
-scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.01, total_iters=nb_points)
-
-losses = []
-loss = torch.tensor([-1])
-best_loss = 1e9
-print("Starting training")
-for epoch in range(1):
-    #for i in tqdm(range(0, len(fineweb_dataset["train"]), config.batch_size), desc=f"Loss = {loss.item()}"):
-    for i in tqdm(range(0, nb_points, config.batch_size)):
-        batch = fineweb_dataset["train"][i:i+config.batch_size]
-        # make all batch["tokens"] the same length
-        max_len = config.sequence_length
-        batch["tokens"] = [tokens[:max_len] for tokens in batch["tokens"]]
-        for tokens in batch["tokens"]:
-            tokens += [0] * (max_len - len(tokens))
-
-        batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
-        batch["date"] = torch.tensor(batch["date"]).to(device)
-
-        optimizer.zero_grad()
-
-        output = moe(batch["tokens"], batch["date"], 
-                     targets=batch["tokens"], get_logits=False, moe=True)
-        # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
-        # loss = criterion(output, batch["tokens"])
-        loss = output["loss"]
-        loss.backward()
-        optimizer.step()
-        scheduler.step()
-
-        del batch["tokens"]
-        del batch["date"]
-        torch.cuda.empty_cache()
-        
-        #print(torch.cuda.memory_summary(device=device))
-
-        if i % 1000 == 0:
-            print(f"Episode: {i}, Loss: {loss.item()}")
-            losses.append(loss.item())
-            if loss.item() < best_loss:
-                best_loss = loss.item()
-                save_checkpoint(moe, optimizer, scheduler, i, "best_model.pth")
+    # Training 
+    nb_points = 100_000
+    print(f"Training on {nb_points} data points")
+    print("TODO: Compute number of tokens")
+    def count_tokens(dataset):
+        return sum(len(tokens) for tokens in dataset["tokens"])
     
-    print(f"Epoch: {epoch}, Loss: {loss.item()}")
+    print(f"Number of tokens in train: {count_tokens(fineweb_dataset['train'])}")
 
-with open("losses.json", "w") as f:
-    json.dump(losses, f)     
+    optimizer = torch.optim.Adam(moe.parameters(), lr=1e-4)
+    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.01, total_iters=nb_points)
+
+    losses = []
+    loss = torch.tensor([-1])
+    best_loss = 1e9
+    print("Starting training")
+    for epoch in range(1):
+        #for i in tqdm(range(0, len(fineweb_dataset["train"]), config.batch_size), desc=f"Loss = {loss.item()}"):
+        for i in tqdm(range(0, nb_points, config.batch_size)):
+            batch = fineweb_dataset["train"][i:i+config.batch_size]
+            # make all batch["tokens"] the same length
+            max_len = config.sequence_length
+            batch["tokens"] = [tokens[:max_len] for tokens in batch["tokens"]]
+            for tokens in batch["tokens"]:
+                tokens += [0] * (max_len - len(tokens))
+
+            batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
+            batch["date"] = torch.tensor(batch["date"]).to(device)
+
+
+            output = moe(batch["tokens"], batch["date"], 
+                        targets=batch["tokens"], get_logits=False, moe=True)
+            # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
+            # loss = criterion(output, batch["tokens"])
+            loss = output["loss"]
+            loss.backward()
+            if i % gradient_accumulation_steps == 0:
+                optimizer.step()
+                optimizer.zero_grad()
+                scheduler.step()
+
+            del batch["tokens"]
+            del batch["date"]
+            torch.cuda.empty_cache()
+            
+            #print(torch.cuda.memory_summary(device=device))
+
+            if i % 1000 == 0:
+                print(f"Episode: {i}, Loss: {loss.item()}")
+                losses.append(loss.item())
+                if loss.item() < best_loss:
+                    best_loss = loss.item()
+                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}.pth")
+        
+        print(f"Epoch: {epoch}, Loss: {loss.item()}")  
+
+    with open(f"{str(moe_routing)}_losses.json", "w") as f:
+        json.dump(losses, f)     

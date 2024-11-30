@@ -14,8 +14,8 @@ class Config:
         self.dtype = torch.bfloat16
         self.bias = False
         self.vocab_size = 50304
-        self.moe = True
-        self.moe_routing = "masked"
+        self.moe = kwargs["moe"]
+        self.moe_routing = kwargs["moe_routing"]
         self.moe_num_experts_per_tok = 2
         self.moe_router_loss = "load_balancing_z_loss"
         self.moe_aux_loss_factor = 0.01

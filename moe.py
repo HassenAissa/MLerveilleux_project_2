@@ -133,6 +133,7 @@ class TimeDependantMoE(nn.Module):
 class MaskedMoE2(MoE):
     def __init__(self, config, mlp):
         super().__init__(config, mlp)
+        self._sequence_length = config.sequence_length
         self.experts.append(DummyExpert(config.n_embd))
         self.router = nn.Linear(config.n_embd, config.moe_num_experts+1, bias=False)
 
@@ -144,7 +145,9 @@ class MaskedMoE2(MoE):
             (mask, torch.ones((mask.shape[0], 1), device=mask.device)),
             dim=1
         )
-        mask = mask.repeat_interleave(1024, dim=0)
+        print("shape of router logits", router_logits.shape)
+        print("shape of mask", mask.shape)
+        mask = mask.repeat_interleave(self._sequence_length, dim=0)
         router_logits = router_logits*mask
 
         # note that selected experts will be the same for all orders:

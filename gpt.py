@@ -138,6 +138,7 @@ class Block(nn.Module):
         self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
         self.attn = CausalSelfAttention(config)
         self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
+        self.moe_config = config.moe
         if config.moe:
             if config.moe_routing == "standard_gating":
                 self.mlp = MoE(config, MLP)
@@ -152,7 +153,10 @@ class Block(nn.Module):
 
     def forward(self, x, date, *args, **kwargs):
         x = x + self.attn(self.ln_1(x, *args, **kwargs))
-        x_, logits_and_experts = self.mlp(self.ln_2(x, *args, **kwargs), date)
+        if self.moe_config  == "masked":
+            x_, logits_and_experts = self.mlp(self.ln_2(x, *args, **kwargs), date)
+        else:
+            x_, logits_and_experts = self.mlp(self.ln_2(x, *args, **kwargs))
         x = x + x_
         return x, logits_and_experts
 

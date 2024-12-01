@@ -95,7 +95,6 @@ for moe_routing in moe_routings:
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
 
-
             output = moe(batch["tokens"], batch["date"], 
                         targets=batch["tokens"], get_logits=False, moe=True)
             # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}

@@ -145,8 +145,6 @@ class MaskedMoE2(MoE):
             (mask, torch.ones((mask.shape[0], 1), device=mask.device)),
             dim=1
         )
-        print("shape of router logits", router_logits.shape)
-        print("shape of mask", mask.shape)
         mask = mask.repeat_interleave(self._sequence_length, dim=0)
         router_logits = router_logits*mask
 

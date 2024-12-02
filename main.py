@@ -20,15 +20,24 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 tokenizer = tiktoken.get_encoding("gpt2")
 
+basic_config = Config(**{
+    "moe_num_experts": 10, 
+    "moe_softmax_order": "softmax_topk",
+    "batch_size": 64,
+    "n_embd": 768,
+    "moe_routing": None,
+    "moe": False
+})
+
 def process_data(example, min_date, max_date):
     text_tokens = tokenizer.encode_ordinary(example["text"])
     text_tokens.append(tokenizer.eot_token)
     date = int(example["date"][:4])
     mask_date = torch.zeros((max_date - min_date + 1)//2)
     mask_date[:(date - min_date + 1)//2] = 1
-    max_len = config.sequence_length
-    text_tokens = text_tokens[:max_len] 
-    text_tokens += [0] * (max_len - len(text_tokens))
+    max_len = basic_config.sequence_length
+    text_tokens = text_tokens[:max_len]
+    text_tokens += [tokenizer.eot_token] * (max_len - len(text_tokens))
     return {"tokens": text_tokens, "date": mask_date}
 
 def get_fineweb_dataset(num_proc=num_proc):
@@ -49,21 +58,15 @@ def get_fineweb_dataset(num_proc=num_proc):
 
 
 fineweb_dataset, min_date, max_date = get_fineweb_dataset()
-basic_config = Config(**{
-    "moe_num_experts": 10, 
-    "moe_softmax_order": "softmax_topk",
-    "batch_size": 64,
-    "n_embd": 768,
-    "moe_routing": None,
-    "moe": False
-})
+
 print("Dataset loaded")
 
-moe_routings = [None, "standard_gating", "masked"]
+moe_routings = ["standard_gating", "masked"]
+#moe_routings = [None, "standard_gating", "masked"]
 gradient_accumulation_steps = 128
 for moe_routing in moe_routings:
     config = Config(**{
-        "moe_num_experts": (max_date - min_date + 1)/2,
+        "moe_num_experts": (max_date - min_date + 1)//2,
         "moe_softmax_order": "softmax_topk",
         "batch_size": 64,
         "n_embd": 768,
@@ -75,16 +78,11 @@ for moe_routing in moe_routings:
     moe = GPTBase(config)
     moe.to(device)
 
-    # print_model_architecture(moe)
+    print_model_architecture(moe)
 
     # Training 
     nb_points = 100_000
     print(f"Training on {nb_points} data points")
-    print("TODO: Compute number of tokens")
-    def count_tokens(dataset):
-        return sum(len(tokens) for tokens in dataset["tokens"])
-    
-    print(f"Number of tokens in train: {count_tokens(fineweb_dataset['train'])}")
 
     optimizer = torch.optim.Adam(moe.parameters(), lr=1e-4)
     scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.01, total_iters=nb_points)
@@ -92,9 +90,9 @@ for moe_routing in moe_routings:
     losses = []
     loss = torch.tensor([-1])
     best_loss = 1e9
+    nb_tokens = 0
     print("Starting training")
     for epoch in range(1):
-        #for i in tqdm(range(0, len(fineweb_dataset["train"]), config.batch_size), desc=f"Loss = {loss.item()}"):
         for i in tqdm(range(0, nb_points, config.batch_size)):
             batch = fineweb_dataset["train"][i:i+config.batch_size]
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
@@ -116,9 +114,10 @@ for moe_routing in moe_routings:
             torch.cuda.empty_cache()
             
             #print(torch.cuda.memory_summary(device=device))
-
+            nb_tokens += basic_config.sequence_length * config.batch_size
             if i % 1000 == 0:
-                print(f"Episode: {i}, Loss: {loss.item()}")
+                print(f"Episode: {i}, Loss: {loss.item()}, Tokens seen: {nb_tokens}")
+                
                 losses.append(loss.item())
                 if loss.item() < best_loss:
                     best_loss = loss.item()
@@ -127,4 +126,4 @@ for moe_routing in moe_routings:
         print(f"Epoch: {epoch}, Loss: {loss.item()}")  
 
     with open(f"{str(moe_routing)}_losses.json", "w") as f:
-        json.dump(losses, f)     
+        json.dump(losses, f)

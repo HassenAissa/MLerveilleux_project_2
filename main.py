@@ -24,8 +24,8 @@ def process_data(example, min_date, max_date):
     text_tokens = tokenizer.encode_ordinary(example["text"])
     text_tokens.append(tokenizer.eot_token)
     date = int(example["date"][:4])
-    mask_date = torch.zeros(max_date - min_date + 1)
-    mask_date[:date - min_date + 1] = 1
+    mask_date = torch.zeros((max_date - min_date + 1)//2)
+    mask_date[:(date - min_date + 1)//2] = 1
     return {"tokens": text_tokens, "date": mask_date}
 
 def get_fineweb_dataset(num_proc=num_proc):
@@ -52,7 +52,7 @@ moe_routings = [None, "standard_gating", "masked"]
 gradient_accumulation_steps = 4
 for moe_routing in moe_routings:
     config = Config(**{
-        "moe_num_experts": max_date - min_date + 1,
+        "moe_num_experts": (max_date - min_date + 1)/2,
         "moe_softmax_order": "softmax_topk",
         "batch_size": 64,
         "n_embd": 768,
@@ -101,7 +101,7 @@ for moe_routing in moe_routings:
             # loss = criterion(output, batch["tokens"])
             loss = output["loss"]
             loss.backward()
-            if i % gradient_accumulation_steps == 0:
+            if (i/config.batch_size) % gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()

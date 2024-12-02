@@ -15,7 +15,7 @@ torch.set_default_dtype(torch.bfloat16)
 
 SEED = 42
 FINEWEB_DATASET_PATH = os.path.join(os.path.dirname(__file__), "datasets/fineweb/")
-num_proc = max(4, cpu_count())
+num_proc = min(4, cpu_count())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 tokenizer = tiktoken.get_encoding("gpt2")
@@ -78,7 +78,7 @@ for moe_routing in moe_routings:
     # print_model_architecture(moe)
 
     # Training 
-    nb_points = 100_000
+    nb_points = 1000000
     print(f"Training on {nb_points} data points")
     print("TODO: Compute number of tokens")
     def count_tokens(dataset):

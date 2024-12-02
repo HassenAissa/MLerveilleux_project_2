@@ -26,6 +26,9 @@ def process_data(example, min_date, max_date):
     date = int(example["date"][:4])
     mask_date = torch.zeros((max_date - min_date + 1)//2)
     mask_date[:(date - min_date + 1)//2] = 1
+    max_len = config.sequence_length
+    text_tokens = text_tokens[:max_len] 
+    text_tokens += [0] * (max_len - len(text_tokens))
     return {"tokens": text_tokens, "date": mask_date}
 
 def get_fineweb_dataset(num_proc=num_proc):
@@ -46,10 +49,18 @@ def get_fineweb_dataset(num_proc=num_proc):
 
 
 fineweb_dataset, min_date, max_date = get_fineweb_dataset()
+basic_config = Config(**{
+    "moe_num_experts": 10, 
+    "moe_softmax_order": "softmax_topk",
+    "batch_size": 64,
+    "n_embd": 768,
+    "moe_routing": None,
+    "moe": False
+})
 print("Dataset loaded")
 
 moe_routings = [None, "standard_gating", "masked"]
-gradient_accumulation_steps = 4
+gradient_accumulation_steps = 128
 for moe_routing in moe_routings:
     config = Config(**{
         "moe_num_experts": (max_date - min_date + 1)/2,
@@ -86,12 +97,6 @@ for moe_routing in moe_routings:
         #for i in tqdm(range(0, len(fineweb_dataset["train"]), config.batch_size), desc=f"Loss = {loss.item()}"):
         for i in tqdm(range(0, nb_points, config.batch_size)):
             batch = fineweb_dataset["train"][i:i+config.batch_size]
-            # make all batch["tokens"] the same length
-            max_len = config.sequence_length
-            batch["tokens"] = [tokens[:max_len] for tokens in batch["tokens"]]
-            for tokens in batch["tokens"]:
-                tokens += [0] * (max_len - len(tokens))
-
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
 
@@ -101,7 +106,7 @@ for moe_routing in moe_routings:
             # loss = criterion(output, batch["tokens"])
             loss = output["loss"]
             loss.backward()
-            if (i/config.batch_size) % gradient_accumulation_steps == 0:
+            if (i//config.batch_size) % gradient_accumulation_steps == 0:
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()

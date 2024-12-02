@@ -138,7 +138,7 @@ class Block(nn.Module):
         self.ln_1 = LayerNorm(config.n_embd, bias=config.bias)
         self.attn = CausalSelfAttention(config)
         self.ln_2 = LayerNorm(config.n_embd, bias=config.bias)
-        self.moe_config = config.moe
+        self.moe_config = config.moe_routing
         if config.moe:
             if config.moe_routing == "standard_gating":
                 self.mlp = MoE(config, MLP)

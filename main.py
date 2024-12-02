@@ -61,7 +61,7 @@ fineweb_dataset, min_date, max_date = get_fineweb_dataset()
 
 print("Dataset loaded")
 
-moe_routings = ["standard_gating", "masked"]
+moe_routings = [None, "standard_gating", "masked"]
 #moe_routings = [None, "standard_gating", "masked"]
 gradient_accumulation_steps = 128
 for moe_routing in moe_routings:

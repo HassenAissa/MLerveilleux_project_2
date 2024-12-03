@@ -36,8 +36,8 @@ def process_data(example, min_date, max_date):
     mask_date = torch.zeros((max_date - min_date + 1)//2)
     mask_date[:(date - min_date + 1)//2] = 1
     max_len = basic_config.sequence_length
-    text_tokens = text_tokens[:max_len]
-    text_tokens += [tokenizer.eot_token] * (max_len - len(text_tokens))
+    text_tokens = text_tokens[:max_len+1]
+    text_tokens += [tokenizer.eot_token] * (max_len+1 - len(text_tokens))
     return {"tokens": text_tokens, "date": mask_date}
 
 def get_fineweb_dataset(num_proc=num_proc):

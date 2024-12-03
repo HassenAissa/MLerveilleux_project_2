@@ -115,7 +115,7 @@ for moe_routing in moe_routings:
             
             #print(torch.cuda.memory_summary(device=device))
             nb_tokens += basic_config.sequence_length * config.batch_size
-            if i % 1000 == 0:
+            if (i//config.batch_size) % 10 == 0:
                 print(f"Episode: {i}, Loss: {loss.item()}, Tokens seen: {nb_tokens}")
                 
                 losses.append(loss.item())

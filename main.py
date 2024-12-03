@@ -15,7 +15,7 @@ torch.set_default_dtype(torch.bfloat16)
 
 SEED = 42
 FINEWEB_DATASET_PATH = os.path.join(os.path.dirname(__file__), "datasets/fineweb/")
-num_proc = min(4, cpu_count())
+num_proc = max(4, cpu_count())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 tokenizer = tiktoken.get_encoding("gpt2")
@@ -41,7 +41,7 @@ def process_data(example, min_date, max_date):
     return {"tokens": text_tokens, "date": mask_date}
 
 def get_fineweb_dataset(num_proc=num_proc):
-    dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="huggingface_cache/datasets")
+    dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="../../lcostes/MLerveilleux_project_2/huggingface_cache/datasets")
     split_dataset = dataset["train"].train_test_split(test_size=0.005, seed=SEED, shuffle=True)
     
     min_date = int(min(min(split_dataset["train"]["date"]), min(split_dataset["test"]["date"]))[:4])

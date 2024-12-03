@@ -61,9 +61,17 @@ fineweb_dataset, min_date, max_date = get_fineweb_dataset()
 
 print("Dataset loaded")
 
-moe_routings = [None, "standard_gating", "masked"]
+moe_routings = ["standard_gating", "masked"]
 #moe_routings = [None, "standard_gating", "masked"]
-gradient_accumulation_steps = 128
+gradient_accumulation_steps = 2
+nb_points = 1_000_000
+
+fineweb_dataset = fineweb_dataset["train"].select(range(nb_points))
+fineweb_dataset = fineweb_dataset.map(
+    lambda examples: {"tokens": torch.tensor(examples["tokens"]).to(device), "date": torch.tensor(examples["date"]).to(device)},
+    batched=True,
+    batch_size = 10000
+)
 for moe_routing in moe_routings:
     config = Config(**{
         "moe_num_experts": (max_date - min_date + 1)//2,
@@ -81,7 +89,6 @@ for moe_routing in moe_routings:
     print_model_architecture(moe)
 
     # Training 
-    nb_points = 1000000
     print(f"Training on {nb_points} data points")
 
     optimizer = torch.optim.Adam(moe.parameters(), lr=1e-4)
@@ -94,12 +101,12 @@ for moe_routing in moe_routings:
     print("Starting training")
     for epoch in range(1):
         for i in tqdm(range(0, nb_points, config.batch_size)):
-            batch = fineweb_dataset["train"][i:i+config.batch_size]
+            batch = fineweb_dataset[i:i+config.batch_size]
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
 
-            output = moe(batch["tokens"], batch["date"], 
-                        targets=batch["tokens"], get_logits=False, moe=True)
+            output = moe(batch["tokens"][:, :-1], batch["date"], 
+                        targets=batch["tokens"][:, 1:], get_logits=False, moe=config.moe)
             # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
             # loss = criterion(output, batch["tokens"])
             loss = output["loss"]
@@ -111,13 +118,13 @@ for moe_routing in moe_routings:
 
             del batch["tokens"]
             del batch["date"]
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache()
             
             #print(torch.cuda.memory_summary(device=device))
             nb_tokens += basic_config.sequence_length * config.batch_size
             if (i//config.batch_size) % 10 == 0:
                 print(f"Episode: {i}, Loss: {loss.item()}, Tokens seen: {nb_tokens}")
-                
+                torch.cuda.empty_cache()
                 losses.append(loss.item())
                 if loss.item() < best_loss:
                     best_loss = loss.item()

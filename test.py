@@ -1,6 +1,6 @@
 
 
-CHECKPOINTS_PATH = ["../../haissa/MLerveilleux_project_2/best_model_None.pth","best_model_None.pth", "best_model_standard_gating.pth", "best_model_masked.pth"]
+CHECKPOINTS_PATH = [ "best_model_masked_small2.pth", "best_model_None_small.pth", "best_model_standard_gating_small.pth", "best_model_masked_small.pth"]
 import math 
 SEQUENCE_LENGTH = 1024
 import datasets
@@ -10,7 +10,7 @@ import os
 from multiprocessing import cpu_count
 import tiktoken
 from datasets import load_dataset
-
+from utils import process_data
 from config import Config
 from tqdm import tqdm
 import json
@@ -34,38 +34,10 @@ basic_config = Config(**{
     "moe": False
 })
 
-def process_data(example, min_date, max_date):
-    text_tokens = tokenizer.encode_ordinary(example["text"])
-    text_tokens.append(tokenizer.eot_token)
-    date = int(example["date"][:4])
-    mask_date = torch.zeros((max_date - min_date + 1)//2)
-    mask_date[:(date - min_date + 1)//2] = 1
-    max_len = basic_config.sequence_length
-    text_tokens = text_tokens[:max_len]
-    text_tokens += [tokenizer.eot_token] * (max_len - len(text_tokens))
-    return {"tokens": text_tokens, "date": mask_date}
-
-def get_fineweb_dataset(num_proc=num_proc):
-    dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="../../lcostes/MLerveilleux_project_2/huggingface_cache/datasets")
-    split_dataset = dataset["train"].train_test_split(test_size=0.005, seed=SEED, shuffle=True)
-    
-    min_date = int(min(min(split_dataset["train"]["date"]), min(split_dataset["test"]["date"]))[:4])
-    max_date = int(max(max(split_dataset["train"]["date"]), max(split_dataset["test"]["date"]))[:4])
-    
-    tokenized = split_dataset["test"].map(
-        process_data,
-        remove_columns=["text"],
-        desc="Tokenizing the splits",
-        num_proc=num_proc,
-        fn_kwargs={"min_date": min_date, "max_date": max_date},
-    )
-    return tokenized, min_date, max_date
-
-
 print("Starting to load datase")
-fineweb_dataset, min_date, max_date = get_fineweb_dataset()
+fineweb_dataset, min_date, max_date = get_fineweb_dataset(test = True)
 print("Dataset loaded")
-moe_routings = [None, None, "standard_gating", "masked"]
+moe_routings = ["masked", None, "standard_gating", "masked"]
 
 
 for path, moe_routing, id in zip(CHECKPOINTS_PATH, moe_routings, range(len(moe_routings))):
@@ -107,14 +79,17 @@ for path, moe_routing, id in zip(CHECKPOINTS_PATH, moe_routings, range(len(moe_r
 
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
+            # print_model_architecture(moe)
+            print(batch["tokens"][:, :-1].clone().shape)
 
-            output = moe(batch["tokens"], batch["date"],targets=batch["tokens"], get_logits=False, moe=True)
+            output = moe(batch["tokens"][:, :-1].clone(), batch["date"], 
+                        targets=batch["tokens"][:, 1:].clone(), get_logits=False, moe=config.moe)
         # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
         # loss = criterion(output, batch["tokens"])
             loss = output["loss"]
 
             loss_sum = loss_sum + loss.item()
-            print(loss_sum)
+            # print(loss_sum)
         print("Loss Sum over batches on the Test Set : ", loss_sum)
         print("Loss over test set : ", loss_sum/len(range(0, nb_points, config.batch_size)))
         normalized_loss = loss_sum/len(range(0, nb_points, config.batch_size))

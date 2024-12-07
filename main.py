@@ -5,6 +5,7 @@ import os
 from multiprocessing import cpu_count
 import tiktoken
 from datasets import load_dataset
+from utils import process_data
 
 from config import Config
 from tqdm import tqdm
@@ -29,42 +30,15 @@ basic_config = Config(**{
     "moe": False
 })
 
-def process_data(example, min_date, max_date):
-    text_tokens = tokenizer.encode_ordinary(example["text"])
-    text_tokens.append(tokenizer.eot_token)
-    date = int(example["date"][:4])
-    mask_date = torch.zeros((max_date - min_date + 1)//2)
-    mask_date[:(date - min_date + 1)//2] = 1
-    max_len = basic_config.sequence_length
-    text_tokens = text_tokens[:max_len+1]
-    text_tokens += [tokenizer.eot_token] * (max_len+1 - len(text_tokens))
-    return {"tokens": text_tokens, "date": mask_date}
 
-def get_fineweb_dataset(num_proc=num_proc):
-    dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="../../lcostes/MLerveilleux_project_2/huggingface_cache/datasets")
-    split_dataset = dataset["train"].train_test_split(test_size=0.005, seed=SEED, shuffle=True)
-    
-    min_date = int(min(min(split_dataset["train"]["date"]), min(split_dataset["test"]["date"]))[:4])
-    max_date = int(max(max(split_dataset["train"]["date"]), max(split_dataset["test"]["date"]))[:4])
-    
-    tokenized = split_dataset.map(
-        process_data,
-        remove_columns=["text"],
-        desc="Tokenizing the splits",
-        num_proc=num_proc,
-        fn_kwargs={"min_date": min_date, "max_date": max_date},
-    )
-    return tokenized, min_date, max_date
-
-
-fineweb_dataset, min_date, max_date = get_fineweb_dataset()
+fineweb_dataset, min_date, max_date = get_fineweb_dataset(test = False)
 
 print("Dataset loaded")
 
 # moe_routings = ["standard_gating", "masked"]
-moe_routings = [None, "standard_gating", "masked"]
+moe_routings = ["masked"]
 gradient_accumulation_steps = 2
-nb_points = 1_000_000
+nb_points = 100_000
 
 fineweb_dataset = fineweb_dataset["train"].select(range(nb_points))
 fineweb_dataset = fineweb_dataset.map(
@@ -86,14 +60,50 @@ for moe_routing in moe_routings:
     moe = GPTBase(config)
     moe.to(device)
 
+    import torch.nn as nn
+    import torch.nn.init as init
+
+    # Define the weight initialization function
+    def initialize_weights(module):
+        if isinstance(module, nn.Linear):
+            init.xavier_uniform_(module.weight)
+            if module.bias is not None:
+                init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            init.normal_(module.weight, mean=0, std=0.01)
+        elif isinstance(module, nn.Conv2d):
+            init.kaiming_uniform_(module.weight, nonlinearity='relu')
+            if module.bias is not None:
+                init.zeros_(module.bias)
+        elif isinstance(module, nn.LayerNorm):
+            init.ones_(module.weight)
+            init.zeros_(module.bias)
+
+    # Instantiate the model
+    moe = GPTBase(config)
+    moe.to(device)
+
+    # Initialize the weights
+    moe.apply(initialize_weights)
+
+    print("Model weights initialized.")
+
+
     print_model_architecture(moe)
 
     # Training 
     print(f"Training on {nb_points} data points")
-
-    optimizer = torch.optim.Adam(moe.parameters(), lr=1e-4)
-    scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1, end_factor=0.01, total_iters=nb_points)
-
+    lr = 1e-2
+    optimizer = torch.optim.AdamW(moe.parameters(), lr=lr, weight_decay = 0.1)
+    # scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=0.7, end_factor=0.01, total_iters=nb_points//(config.batch_size * gradient_accumulation_steps))
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, total_steps=nb_points//(config.batch_size * gradient_accumulation_steps)+1, 
+                                                            pct_start=0.05, anneal_strategy="cos", 
+                                                            cycle_momentum=False, div_factor=1e2, final_div_factor=.1)
+    #cosine scheduling
+    #weight decay 0.1
+    #use get X, Y from the github
+    #concatenate all the dataset and the select with get X Y
+    # 64 * 1024
     losses = []
     loss = torch.tensor([-1])
     best_loss = 1e9
@@ -104,7 +114,6 @@ for moe_routing in moe_routings:
             batch = fineweb_dataset[i:i+config.batch_size]
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
-
             output = moe(batch["tokens"][:, :-1].clone(), batch["date"], 
                         targets=batch["tokens"][:, 1:].clone(), get_logits=False, moe=config.moe)
             # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
@@ -112,6 +121,7 @@ for moe_routing in moe_routings:
             loss = output["loss"]
             loss.backward()
             if (i//config.batch_size) % gradient_accumulation_steps == 0:
+                # torch.nn.utils.clip_grad_norm_(moe.parameters(), max_norm=1.0)
                 optimizer.step()
                 optimizer.zero_grad()
                 scheduler.step()
@@ -128,9 +138,9 @@ for moe_routing in moe_routings:
                 losses.append(loss.item())
                 if loss.item() < best_loss:
                     best_loss = loss.item()
-                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}.pth")
+                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}_small2.pth")
         
         print(f"Epoch: {epoch}, Loss: {loss.item()}")  
 
-    with open(f"{str(moe_routing)}_losses.json", "w") as f:
+    with open(f"{str(moe_routing)}_losses_small2.json", "w") as f:
         json.dump(losses, f)

@@ -1,42 +1,53 @@
 import torch
 from multiprocessing import cpu_count
+import tiktoken
+from datasets import load_dataset
+SEED = 42
 
 
-num_proc = max(4, cpu_count)
-def process_data(example, min_date, max_date):
+num_proc = max(4, cpu_count())
+def process_data(example, min_date, max_date, tokenizer):
     text_tokens = tokenizer.encode_ordinary(example["text"])
     text_tokens.append(tokenizer.eot_token)
     date = int(example["date"][:4])
     mask_date = torch.zeros((max_date - min_date + 1)//2)
     mask_date[:(date - min_date + 1)//2] = 1
-    max_len = basic_config.sequence_length
+    max_len = 1024
     text_tokens = text_tokens[:max_len+1]
-    text_tokens += [tokenizer.eot_token] * (max_len+1 - len(text_tokens))
+    text_tokens += ([tokenizer.eot_token] * (max_len+ 1 - len(text_tokens)))
+    # print(len(text_tokens))
     return {"tokens": text_tokens, "date": mask_date}
 
 
-def get_fineweb_dataset(test, num_proc=num_proc):
+def get_fineweb_dataset(test, num_proc=num_proc, nb_points = 1_000_000):
+    tokenizer = tiktoken.get_encoding("gpt2")
+
     dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="../../lcostes/MLerveilleux_project_2/huggingface_cache/datasets")
-    split_dataset = dataset["train"].train_test_split(test_size=0.005, seed=SEED, shuffle=True)
+    print("loaded")
+    shuffled_dataset = dataset['train'].shuffle(seed=42)
+    dataset = shuffled_dataset.select(range(nb_points))
+    split_dataset = dataset.train_test_split(test_size=0.005, seed=SEED, shuffle=True)
     
     min_date = int(min(min(split_dataset["train"]["date"]), min(split_dataset["test"]["date"]))[:4])
     max_date = int(max(max(split_dataset["train"]["date"]), max(split_dataset["test"]["date"]))[:4])
-    if test:
-        tokenized = split_dataset["test"].map(
-            process_data,
-            remove_columns=["text"],
-            desc="Tokenizing the splits",
-            num_proc=num_proc,
-            fn_kwargs={"min_date": min_date, "max_date": max_date},
-        )
-    else:
-        tokenized = split_dataset.map(
-            process_data,
-            remove_columns=["text"],
-            desc="Tokenizing the splits",
-            num_proc=num_proc,
-            fn_kwargs={"min_date": min_date, "max_date": max_date},
-        )
+    # if test:
+    #     tokenized = split_dataset["test"].map(
+    #         process_data,
+    #         remove_columns=["text"],
+    #         desc="Tokenizing the splits",
+    #         num_proc=num_proc,
+    #         fn_kwargs={"min_date": min_date, "max_date": max_date, "tokenizer": tokenizer},
+    #     )
+    # else:
+    tokenized = split_dataset.map(
+        process_data,
+        remove_columns=["text"],
+        desc="Tokenizing the splits",
+        num_proc=num_proc,
+        fn_kwargs={"min_date": min_date, "max_date": max_date, "tokenizer": tokenizer},
+    )
+    print(tokenized)
+    
     return tokenized, min_date, max_date
 
 def save_checkpoint(model, opt, scheduler, itr, ckpt_path, **extra_args):

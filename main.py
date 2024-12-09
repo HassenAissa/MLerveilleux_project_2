@@ -3,9 +3,7 @@ from gpt import GPTBase
 import torch
 import os
 from multiprocessing import cpu_count
-import tiktoken
-from datasets import load_dataset
-from utils import process_data
+from utils import process_data, get_fineweb_dataset
 
 from config import Config
 from tqdm import tqdm
@@ -19,7 +17,6 @@ FINEWEB_DATASET_PATH = os.path.join(os.path.dirname(__file__), "datasets/fineweb
 num_proc = max(4, cpu_count())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-tokenizer = tiktoken.get_encoding("gpt2")
 
 basic_config = Config(**{
     "moe_num_experts": 10, 
@@ -30,22 +27,22 @@ basic_config = Config(**{
     "moe": False
 })
 
-
-fineweb_dataset, min_date, max_date = get_fineweb_dataset(test = False)
+nb_points = 1_000_000
+fineweb_dataset, min_date, max_date = get_fineweb_dataset(test = False, nb_points = nb_points)
 
 print("Dataset loaded")
 
-# moe_routings = ["standard_gating", "masked"]
 moe_routings = ["masked"]
+# moe_routings = ["masked"]
 gradient_accumulation_steps = 2
-nb_points = 100_000
 
-fineweb_dataset = fineweb_dataset["train"].select(range(nb_points))
+# fineweb_dataset = fineweb_dataset["train"].select(range(nb_points))
 fineweb_dataset = fineweb_dataset.map(
     lambda examples: {"tokens": torch.tensor(examples["tokens"]).to(device), "date": torch.tensor(examples["date"]).to(device)},
     batched=True,
     batch_size = 10000
 )
+fineweb_dataset = fineweb_dataset["train"]
 for moe_routing in moe_routings:
     config = Config(**{
         "moe_num_experts": (max_date - min_date + 1)//2,
@@ -58,6 +55,7 @@ for moe_routing in moe_routings:
     })
 
     moe = GPTBase(config)
+    moe.train()
     moe.to(device)
 
     import torch.nn as nn
@@ -98,7 +96,7 @@ for moe_routing in moe_routings:
     # scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=0.7, end_factor=0.01, total_iters=nb_points//(config.batch_size * gradient_accumulation_steps))
     scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, total_steps=nb_points//(config.batch_size * gradient_accumulation_steps)+1, 
                                                             pct_start=0.05, anneal_strategy="cos", 
-                                                            cycle_momentum=False, div_factor=1e2, final_div_factor=.1)
+                                                            cycle_momentum=False, div_factor=1e1, final_div_factor=.1)
     #cosine scheduling
     #weight decay 0.1
     #use get X, Y from the github
@@ -110,10 +108,11 @@ for moe_routing in moe_routings:
     nb_tokens = 0
     print("Starting training")
     for epoch in range(1):
-        for i in tqdm(range(0, nb_points, config.batch_size)):
+        for i in tqdm(range(0, nb_points-config.batch_size, config.batch_size)):
             batch = fineweb_dataset[i:i+config.batch_size]
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
+            # print(batch["tokens"][:, :-1].shape)
             output = moe(batch["tokens"][:, :-1].clone(), batch["date"], 
                         targets=batch["tokens"][:, 1:].clone(), get_logits=False, moe=config.moe)
             # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
@@ -138,9 +137,9 @@ for moe_routing in moe_routings:
                 losses.append(loss.item())
                 if loss.item() < best_loss:
                     best_loss = loss.item()
-                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}_small2.pth")
+                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}2.pth")
         
         print(f"Epoch: {epoch}, Loss: {loss.item()}")  
 
-    with open(f"{str(moe_routing)}_losses_small2.json", "w") as f:
+    with open(f"{str(moe_routing)}_losses2.json", "w") as f:
         json.dump(losses, f)

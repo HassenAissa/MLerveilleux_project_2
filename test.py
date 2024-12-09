@@ -1,6 +1,6 @@
 
 
-CHECKPOINTS_PATH = [ "best_model_masked_small2.pth", "best_model_None_small.pth", "best_model_standard_gating_small.pth", "best_model_masked_small.pth"]
+CHECKPOINTS_PATH = [ "best_model_None2.pth", "best_model_standard_gating2.pth", "best_model_masked2.pth"]
 import math 
 SEQUENCE_LENGTH = 1024
 import datasets
@@ -10,10 +10,11 @@ import os
 from multiprocessing import cpu_count
 import tiktoken
 from datasets import load_dataset
-from utils import process_data
+from utils import process_data, get_fineweb_dataset
 from config import Config
 from tqdm import tqdm
 import json
+import tiktoken
 from utils import save_checkpoint, print_model_architecture
 
 torch.set_default_dtype(torch.bfloat16)
@@ -37,7 +38,8 @@ basic_config = Config(**{
 print("Starting to load datase")
 fineweb_dataset, min_date, max_date = get_fineweb_dataset(test = True)
 print("Dataset loaded")
-moe_routings = ["masked", None, "standard_gating", "masked"]
+moe_routings = [ None, "standard_gating", "masked"]
+fineweb_dataset = fineweb_dataset["test"]
 
 
 for path, moe_routing, id in zip(CHECKPOINTS_PATH, moe_routings, range(len(moe_routings))):
@@ -74,14 +76,11 @@ for path, moe_routing, id in zip(CHECKPOINTS_PATH, moe_routings, range(len(moe_r
         loss_sum = 0
         for i in tqdm(range(0, nb_points, config.batch_size)):
             batch = fineweb_dataset[i:i+config.batch_size]
-            batch["tokens"] = [tokens[:max_len] for tokens in batch["tokens"]]
-            
-
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
             # print_model_architecture(moe)
-            print(batch["tokens"][:, :-1].clone().shape)
-
+            # print(batch["tokens"][:, :-1].shape)
+            # print("mask",batch["date"].shape)
             output = moe(batch["tokens"][:, :-1].clone(), batch["date"], 
                         targets=batch["tokens"][:, 1:].clone(), get_logits=False, moe=config.moe)
         # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}

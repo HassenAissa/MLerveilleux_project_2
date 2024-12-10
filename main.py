@@ -5,7 +5,7 @@ from gpt import GPTBase
 import torch
 import os
 from multiprocessing import cpu_count
-from utils import process_data, get_fineweb_dataset
+from utils import process_data2, get_fineweb_dataset
 
 from config import Config
 from tqdm import tqdm
@@ -16,6 +16,7 @@ import wandb
 torch.set_default_dtype(torch.bfloat16)
 
 SEED = 42
+
 FINEWEB_DATASET_PATH = os.path.join(os.path.dirname(__file__), "datasets/fineweb/")
 num_proc = max(4, cpu_count())
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -106,8 +107,8 @@ for moe_routing, run_name in zip(moe_routings, run_names):
     moe.apply(initialize_weights)
     moe.train()
     total_params = sum(p.numel() for p in moe.parameters())
-    nb_points = int((total_params*20)/1024)
-    #nb_points = 300
+    #nb_points = int((total_params*20)/1024)
+    nb_points = len(fineweb_dataset)
     print("nb sequences to see ", nb_points)
 
     print("Model weights initialized.")

@@ -5,19 +5,20 @@ from datasets import load_dataset
 import random
 import tqdm
 SEED = 42
-
+random.seed(SEED)
+print("RANDOM SEED SETTED TO", SEED)
 
 num_proc = max(4, cpu_count())
-def process_data(example, min_date, max_date, tokenizer):
+def process_data2(example, min_date, max_date, tokenizer):
     text_tokens = tokenizer.encode_ordinary(example["text"])
     text_tokens.append(tokenizer.eot_token)
     date = int(example["date"][:4])
     mask_date = torch.zeros((max_date - min_date + 1)//2)
     mask_date[:(date - min_date + 1)//2] = 1
     max_len = 1024
-    starting_position = max(0, random.randint(0,len(text_tokens)-max_len-1))
-    print("starting pos : ", starting_position)
-    print(len(text_tokens))
+    starting_position = max(0, random.randint(0,max(0,len(text_tokens)-max_len-1)))
+    #print("starting pos : ", starting_position)
+    #print(len(text_tokens))
     text_tokens = text_tokens[:max_len+1]
     text_tokens += ([tokenizer.eot_token] * (max_len+ 1 - len(text_tokens)))
     # print(len(text_tokens))
@@ -44,13 +45,15 @@ def get_fineweb_dataset(test, num_proc=num_proc, nb_points = 1_000_000):
     #         fn_kwargs={"min_date": min_date, "max_date": max_date, "tokenizer": tokenizer},
     #     )
     # else:
+    print("Now tokenizing dataset")
     tokenized = split_dataset.map(
-        process_data,
+        process_data2,
         remove_columns=["text"],
         desc="Tokenizing the splits",
         num_proc=num_proc,
         fn_kwargs={"min_date": min_date, "max_date": max_date, "tokenizer": tokenizer},
     )
+    print("done")
     print(tokenized)
     
     return tokenized, min_date, max_date

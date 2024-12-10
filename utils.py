@@ -2,6 +2,8 @@ import torch
 from multiprocessing import cpu_count
 import tiktoken
 from datasets import load_dataset
+import random
+import tqdm
 SEED = 42
 
 
@@ -13,6 +15,9 @@ def process_data(example, min_date, max_date, tokenizer):
     mask_date = torch.zeros((max_date - min_date + 1)//2)
     mask_date[:(date - min_date + 1)//2] = 1
     max_len = 1024
+    starting_position = max(0, random.randint(0,len(text_tokens)-max_len-1))
+    print("starting pos : ", starting_position)
+    print(len(text_tokens))
     text_tokens = text_tokens[:max_len+1]
     text_tokens += ([tokenizer.eot_token] * (max_len+ 1 - len(text_tokens)))
     # print(len(text_tokens))
@@ -81,3 +86,31 @@ def print_model_architecture(model):
             print(f"{'    ' * indent_level}Layer: {name} --> Number of parameters: {layer_params}")
             total_params += layer_params
     print(f"\nTotal number of parameters: {total_params}\n")
+
+
+@torch.no_grad()
+def eval(model, val_dataset,config, device='cpu'):
+    assert model.training == False
+    print("Computing validation loss")
+    loss_list_val, acc_list = [], []
+    nb_points = len(val_dataset)
+    for i in tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
+        batch = val_dataset[i:i + config.batch_size]
+        batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
+        batch["date"] = torch.tensor(batch["date"]).to(device)
+        x = batch["tokens"][:, :-1].clone()
+        y = batch["tokens"][:, 1:].clone()
+        outputs = model(x, batch["date"],targets = y, get_logits = False, moe = config.moe)
+        val_loss = outputs['loss']
+        loss_list_val.append(val_loss)
+        acc_list.append((outputs['logits'].argmax(-1) == y).float().mean())
+        del batch["tokens"]
+        del batch["date"]
+        del x
+        del y
+
+    val_acc = torch.stack(acc_list).mean().item()
+    val_loss = torch.stack(loss_list_val).mean().item()
+    val_perplexity = 2.71828 ** val_loss
+
+    return val_acc, val_loss, val_perplexity

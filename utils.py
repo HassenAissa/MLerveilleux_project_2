@@ -1,27 +1,20 @@
 import torch
 from multiprocessing import cpu_count
 import tiktoken
-from datasets import load_dataset
+from datasets import load_dataset, Dataset
 import random
 import tqdm
 SEED = 42
 random.seed(SEED)
-print("RANDOM SEED SETTED TO", SEED)
+print("RANDOM SEED SET TO", SEED)
 
 num_proc = max(4, cpu_count())
 def process_data2(example, min_date, max_date, tokenizer):
     text_tokens = tokenizer.encode_ordinary(example["text"])
     text_tokens.append(tokenizer.eot_token)
-    date = int(example["date"][:4])
-    mask_date = torch.zeros((max_date - min_date + 1)//2)
-    mask_date[:(date - min_date + 1)//2] = 1
-    max_len = 1024
-    starting_position = max(0, random.randint(0,max(0,len(text_tokens)-max_len-1)))
-    #print("starting pos : ", starting_position)
-    #print(len(text_tokens))
-    text_tokens = text_tokens[:max_len+1]
-    text_tokens += ([tokenizer.eot_token] * (max_len+ 1 - len(text_tokens)))
-    # print(len(text_tokens))
+    date = example["date"]
+    mask_date = torch.zeros((max_date - min_date)//2+1)
+    mask_date[:date+1] = 1
     return {"tokens": text_tokens, "date": mask_date}
 
 
@@ -31,11 +24,27 @@ def get_fineweb_dataset(test, num_proc=num_proc, nb_points = 1_000_000):
     dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="../../lcostes/MLerveilleux_project_2/huggingface_cache/datasets")
     print("loaded")
     shuffled_dataset = dataset['train'].shuffle(seed=42)
-    dataset = shuffled_dataset.select(range(nb_points))
+    dataset = shuffled_dataset.select(range(2*nb_points))
+    min_date = int(min(dataset["train"]["date"]))
+    max_date = int(max(dataset["train"]["date"]))
+
+    text_years = ["", "", "", "", "", ""]
+    for text, date in zip(dataset["text"], dataset["date"]):
+        text_years[(int(date[:4])-int(min_date[:4]))//2] += text
+
+    new_dataset = {
+        "text": [],
+        "date": []
+    }
+
+    for j, text in enumerate(text_years):
+        for i in range(0, len(text), 1025):
+            new_dataset["text"].append(text[i:i+1025])
+            new_dataset["date"].append(j)
+    dataset = Dataset.from_dict(new_dataset)
+
     split_dataset = dataset.train_test_split(test_size=0.005, seed=SEED, shuffle=True)
     
-    min_date = int(min(min(split_dataset["train"]["date"]), min(split_dataset["test"]["date"]))[:4])
-    max_date = int(max(max(split_dataset["train"]["date"]), max(split_dataset["test"]["date"]))[:4])
     # if test:
     #     tokenized = split_dataset["test"].map(
     #         process_data,

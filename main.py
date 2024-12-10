@@ -35,8 +35,8 @@ fineweb_dataset, min_date, max_date = get_fineweb_dataset(test=False, nb_points=
 
 print("Dataset loaded")
 
-moe_routings = ["masked"]
-run_names = ["masked"]
+moe_routings = [None, "standard_gating", "masked"]
+run_names = ["Normal GPT", "standard_gating", "masked"]
 # moe_routings = ["masked"]
 gradient_accumulation_steps = 2
 

@@ -51,7 +51,7 @@ fineweb_dataset_val = fineweb_dataset["test"]
 fineweb_dataset = fineweb_dataset["train"]
 for moe_routing, run_name in zip(moe_routings, run_names):
     config = Config(**{
-        "moe_num_experts": (max_date - min_date + 1) // 2,
+        "moe_num_experts": (max_date - min_date) // 2 + 2,
         "moe_softmax_order": "softmax_topk",
         "batch_size": 64,
         "n_embd": 768,
@@ -66,7 +66,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
 
         # track hyperparameters and run metadata
         config={
-            "moe_num_experts": (max_date - min_date + 1) // 2,
+            "moe_num_experts": (max_date - min_date) // 2 +1,
             "moe_softmax_order": "softmax_topk",
             "batch_size": 64,
             "n_embd": 768,
@@ -117,7 +117,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
 
     # Training 
     print(f"Training on {nb_points} data points")
-    lr = 1e-2
+    lr = 1e-4
     optimizer = torch.optim.AdamW(moe.parameters(), lr=lr, weight_decay=0.1)
     # scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=0.7, end_factor=0.01, total_iters=nb_points//(config.batch_size * gradient_accumulation_steps))
     scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, total_steps=nb_points // (
@@ -134,7 +134,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
     best_loss = 1e9
     nb_tokens = 0
     print("Starting training")
-    val_curve_freq = 50
+    val_curve_freq = 250
     for epoch in range(1):
         for i in tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
             batch = fineweb_dataset[i:i + config.batch_size]

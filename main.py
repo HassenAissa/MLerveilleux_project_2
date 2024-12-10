@@ -5,7 +5,7 @@ from gpt import GPTBase
 import torch
 import os
 from multiprocessing import cpu_count
-from utils import process_data2, get_fineweb_dataset
+from utils import  get_fineweb_dataset
 
 from config import Config
 from tqdm import tqdm
@@ -40,7 +40,7 @@ run_names = ["masked"]
 # moe_routings = ["masked"]
 gradient_accumulation_steps = 2
 
-# fineweb_dataset = fineweb_dataset["train"].select(range(nb_points))
+
 fineweb_dataset = fineweb_dataset.map(
     lambda examples: {"tokens": torch.tensor(examples["tokens"]).to(device),
                       "date": torch.tensor(examples["date"]).to(device)},
@@ -141,6 +141,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
             # print(batch["tokens"][:, :-1].shape)
+
             output = moe(batch["tokens"][:, :-1].clone(), batch["date"],
                          targets=batch["tokens"][:, 1:].clone(), get_logits=False, moe=config.moe)
             # output = {"logits": logits, "loss": loss, "aux_losses": aux_losses, "router_logits": router_logits,}
@@ -166,7 +167,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
                 losses.append(loss.item())
                 if loss.item() < best_loss:
                     best_loss = loss.item()
-                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}2.pth")
+                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}3.pth")
             if (i // config.batch_size) % val_curve_freq == 0:
                 moe.eval()
                 val_acc, val_loss, val_perplexity = utils.eval(moe, fineweb_dataset_val, config, device=device)
@@ -175,9 +176,6 @@ for moe_routing, run_name in zip(moe_routings, run_names):
                     "val/acc":val_acc,
                     "val/perplexity":val_perplexity
                 }, step = i//config.batch_size)
-
-
-
 
 
 

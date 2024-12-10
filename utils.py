@@ -1,49 +1,32 @@
 import torch
 from multiprocessing import cpu_count
+import multiprocessing
 import tiktoken
 from datasets import load_dataset, Dataset
 import random
-import tqdm
+from tqdm import tqdm
+
 SEED = 42
 random.seed(SEED)
 print("RANDOM SEED SET TO", SEED)
 
 num_proc = max(4, cpu_count())
-def process_data2(example, min_date, max_date, tokenizer):
+def process_data1(example, min_date, max_date, tokenizer):
     text_tokens = tokenizer.encode_ordinary(example["text"])
-    text_tokens.append(tokenizer.eot_token)
-    date = example["date"]
-    mask_date = torch.zeros((max_date - min_date)//2+1)
-    mask_date[:date+1] = 1
-    return {"tokens": text_tokens, "date": mask_date}
+    date = (int(example["date"][:4]) - min_date) // 2 + 1
+    return {"tokens": text_tokens, "date": date}
 
 
 def get_fineweb_dataset(test, num_proc=num_proc, nb_points = 1_000_000):
     tokenizer = tiktoken.get_encoding("gpt2")
 
-    dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT", cache_dir="../../lcostes/MLerveilleux_project_2/huggingface_cache/datasets")
+    dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT")
     print("loaded")
     shuffled_dataset = dataset['train'].shuffle(seed=42)
     dataset = shuffled_dataset.select(range(2*nb_points))
-    min_date = int(min(dataset["train"]["date"]))
-    max_date = int(max(dataset["train"]["date"]))
+    min_date = int(min(dataset["date"])[:4])
+    max_date = int(max(dataset["date"])[:4])
 
-    text_years = ["", "", "", "", "", ""]
-    for text, date in zip(dataset["text"], dataset["date"]):
-        text_years[(int(date[:4])-int(min_date[:4]))//2] += text
-
-    new_dataset = {
-        "text": [],
-        "date": []
-    }
-
-    for j, text in enumerate(text_years):
-        for i in range(0, len(text), 1025):
-            new_dataset["text"].append(text[i:i+1025])
-            new_dataset["date"].append(j)
-    dataset = Dataset.from_dict(new_dataset)
-
-    split_dataset = dataset.train_test_split(test_size=0.005, seed=SEED, shuffle=True)
     
     # if test:
     #     tokenized = split_dataset["test"].map(
@@ -55,17 +38,37 @@ def get_fineweb_dataset(test, num_proc=num_proc, nb_points = 1_000_000):
     #     )
     # else:
     print("Now tokenizing dataset")
-    tokenized = split_dataset.map(
-        process_data2,
+    tokenized = dataset.map(
+        process_data1,
         remove_columns=["text"],
         desc="Tokenizing the splits",
         num_proc=num_proc,
         fn_kwargs={"min_date": min_date, "max_date": max_date, "tokenizer": tokenizer},
     )
-    print("done")
     print(tokenized)
-    
-    return tokenized, min_date, max_date
+
+
+
+    text_years = [[],[],[],[],[],[]]
+    with multiprocessing.Pool(128) as pool:
+        for text, date in tqdm(zip(tokenized["tokens"], tokenized["date"])):
+            text_years[date-1] += text
+
+    new_dataset = {
+        "tokens": [],
+        "date": []
+    }
+    with multiprocessing.Pool(128) as pool:
+        for j, text in tqdm(enumerate(text_years)):
+            for i in range(0, len(text)-1025, 1025):
+                mask_date = torch.zeros((max_date - min_date)//2+1)
+                mask_date[:j+1] = 1
+                new_dataset["tokens"].append(text[i:i+1025])
+                new_dataset["date"].append(mask_date)
+    dataset = Dataset.from_dict(new_dataset)
+    split_dataset = dataset.train_test_split(test_size=0.005, seed=SEED, shuffle=True)
+    print("done")
+    return split_dataset, min_date, max_date
 
 def save_checkpoint(model, opt, scheduler, itr, ckpt_path, **extra_args):
 
@@ -106,7 +109,7 @@ def eval(model, val_dataset,config, device='cpu'):
     print("Computing validation loss")
     loss_list_val, acc_list = [], []
     nb_points = len(val_dataset)
-    for i in tqdm.tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
+    for i in tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
         batch = val_dataset[i:i + config.batch_size]
         batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
         batch["date"] = torch.tensor(batch["date"]).to(device)

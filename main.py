@@ -107,7 +107,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
     moe.train()
     total_params = sum(p.numel() for p in moe.parameters())
     nb_points = int((total_params*20)/1024)
-    nb_points = 300
+    #nb_points = 300
     print("nb sequences to see ", nb_points)
 
     print("Model weights initialized.")

@@ -94,7 +94,7 @@ def eval(model, val_dataset,config, device='cpu'):
     print("Computing validation loss")
     loss_list_val, acc_list = [], []
     nb_points = len(val_dataset)
-    for i in tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
+    for i in tqdm.tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
         batch = val_dataset[i:i + config.batch_size]
         batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
         batch["date"] = torch.tensor(batch["date"]).to(device)
@@ -103,14 +103,14 @@ def eval(model, val_dataset,config, device='cpu'):
         outputs = model(x, batch["date"],targets = y, get_logits = False, moe = config.moe)
         val_loss = outputs['loss']
         loss_list_val.append(val_loss)
-        acc_list.append((outputs['logits'].argmax(-1) == y).float().mean())
+        #acc_list.append((outputs['logits'].argmax(-1) == y).float().mean())
         del batch["tokens"]
         del batch["date"]
         del x
         del y
 
-    val_acc = torch.stack(acc_list).mean().item()
+    #val_acc = torch.stack(acc_list).mean().item()
     val_loss = torch.stack(loss_list_val).mean().item()
     val_perplexity = 2.71828 ** val_loss
 
-    return val_acc, val_loss, val_perplexity
+    return 0.0, val_loss, val_perplexity

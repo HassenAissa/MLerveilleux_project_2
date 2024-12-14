@@ -30,13 +30,13 @@ basic_config = Config(**{
     "moe": False
 })
 
-nb_points = 1_000_000
+nb_points = 8_000_000
 fineweb_dataset, min_date, max_date = get_fineweb_dataset(test=False, nb_points=nb_points)
 
 print("Dataset loaded")
 
-moe_routings = [None, "standard_gating", "masked"]
-run_names = ["Normal GPT", "standard_gating", "masked"]
+moe_routings = [ "masked"]
+run_names = ["masked"]
 # moe_routings = ["masked"]
 gradient_accumulation_steps = 2
 
@@ -51,7 +51,7 @@ fineweb_dataset_val = fineweb_dataset["test"]
 fineweb_dataset = fineweb_dataset["train"]
 for moe_routing, run_name in zip(moe_routings, run_names):
     config = Config(**{
-        "moe_num_experts": (max_date - min_date) // 2 + 2,
+        "moe_num_experts": (max_date - min_date) // 2 + 1,
         "moe_softmax_order": "softmax_topk",
         "batch_size": 64,
         "n_embd": 768,
@@ -117,7 +117,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
 
     # Training 
     print(f"Training on {nb_points} data points")
-    lr = 1e-4
+    lr = 1e-3
     optimizer = torch.optim.AdamW(moe.parameters(), lr=lr, weight_decay=0.1)
     # scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=0.7, end_factor=0.01, total_iters=nb_points//(config.batch_size * gradient_accumulation_steps))
     scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer=optimizer, max_lr=lr, total_steps=nb_points // (
@@ -134,7 +134,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
     best_loss = 1e9
     nb_tokens = 0
     print("Starting training")
-    val_curve_freq = 250
+    val_curve_freq = 2000
     for epoch in range(1):
         for i in tqdm(range(0, nb_points - config.batch_size, config.batch_size)):
             batch = fineweb_dataset[i:i + config.batch_size]
@@ -167,7 +167,7 @@ for moe_routing, run_name in zip(moe_routings, run_names):
                 losses.append(loss.item())
                 if loss.item() < best_loss:
                     best_loss = loss.item()
-                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}3.pth")
+                    save_checkpoint(moe, optimizer, scheduler, i, f"best_model_{str(moe_routing)}4.pth")
             if (i // config.batch_size) % val_curve_freq == 0:
                 moe.eval()
                 val_acc, val_loss, val_perplexity = utils.eval(moe, fineweb_dataset_val, config, device=device)
@@ -181,6 +181,6 @@ for moe_routing, run_name in zip(moe_routings, run_names):
 
         print(f"Epoch: {epoch}, Loss: {loss.item()}")
 
-    with open(f"{str(moe_routing)}_losses2.json", "w") as f:
+    with open(f"{str(moe_routing)}_losses4.json", "w") as f:
         json.dump(losses, f)
     wandb.finish()

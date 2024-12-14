@@ -23,7 +23,7 @@ def get_fineweb_dataset(test, num_proc=num_proc, nb_points = 1_000_000):
     dataset = load_dataset(path="HuggingFaceFW/fineweb", name="sample-10BT")
     print("loaded")
     shuffled_dataset = dataset['train'].shuffle(seed=42)
-    dataset = shuffled_dataset.select(range(2*nb_points))
+    dataset = shuffled_dataset.select(range(nb_points))
     min_date = int(min(dataset["date"])[:4])
     max_date = int(max(dataset["date"])[:4])
 

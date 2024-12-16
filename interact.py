@@ -103,7 +103,12 @@ if __name__ == "__main__":
 
     query = input(INPUT_SYMBOL)
     while query != STOP_QUERY:
-        run_query(query, None, model, tokenizer, config, prompt_frame, temperature=temperature)
+        date = None
+        if routing == "masked":
+            date = int(choices(list(range(MIN_DATE, MAX_DATE+1))))
+            date = (date - MIN_DATE) // 2 + 1
+
+        run_query(query, date, model, tokenizer, config, prompt_frame, temperature=temperature)
         query = input(INPUT_SYMBOL)
 
 

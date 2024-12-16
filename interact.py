@@ -21,21 +21,23 @@ def run_query(query,date, model, tokenizer, config, max_answer_len = 100, device
     ctx_window_size = config.sequence_length
     query_tokens = tokenizer.encode_ordinary(query)
     query_len = len(query_tokens)
-    query_tokens = [tokenizer.eot_token]*(ctx_window_size - query_len) + query_tokens
+    query_tokens = tokenizer.encode(" ")*(ctx_window_size - query_len) + query_tokens
     query_tokens = torch.tensor(query_tokens, dtype=torch.int64)
     query_tokens = query_tokens.reshape((1,-1))
 
     answer_count = 0
     new_token = None
     print("")
-    while answer_count < max_answer_len and new_token.item() != tokenizer.eot_token:
+    while new_token == None or (answer_count < max_answer_len and new_token.item() != tokenizer.eot_token):
         query_tokens = query_tokens.to(device)
         output = model(query_tokens, date, get_logits=True, moe=config.moe)
         logits = output["logits"].reshape((-1,))
         new_token = torch.argmax(logits).reshape((1,1))
-        query_tokens = torch.cat([query_tokens[1:], new_token])
+        #print(query_tokens.shape)
+        #print(new_token.shape)
+        query_tokens = torch.cat([query_tokens[:,1:], new_token], dim=-1)
         answer_count += 1
-        print(tokenizer.decode([new_token]), end="")
+        print(tokenizer.decode([new_token]), end="", flush=True)
     print("")
 
 

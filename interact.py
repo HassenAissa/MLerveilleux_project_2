@@ -27,11 +27,17 @@ def run_query(query,date, model, tokenizer, config, max_answer_len = 100, device
 
     answer_count = 0
     new_token = None
-    while answer_count < max_answer_len and new_token != tokenizer.eot_token:
+    print("")
+    while answer_count < max_answer_len and new_token.item() != tokenizer.eot_token:
         query_tokens = query_tokens.to(device)
         output = model(query_tokens, date, get_logits=True, moe=config.moe)
-        print(output["logits"].shape)
+        logits = output["logits"].reshape((-1,))
+        new_token = torch.argmax(logits).reshape((1,1))
+        query_tokens = torch.cat([query_tokens[1:], new_token])
         answer_count += 1
+        print(tokenizer.decode([new_token]), end="")
+    print("")
+
 
 
 

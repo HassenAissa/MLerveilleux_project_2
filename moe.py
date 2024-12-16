@@ -75,62 +75,9 @@ class DummyExpert(nn.Module):
         out = torch.zeros((self._output_size,), device=inputs.device)
         return out, {}
     
-class MaskedMoE(MoE):
-    def __init__(self, config, mlp):
-        super().__init__(config, mlp)
-        self.experts.append(DummyExpert(config.n_embd))
-
-    def forward(self, inputs: torch.Tensor, mask: torch.Tensor):
-        # [batch_size * sequence_length, n_embd]
-        inputs_squashed = inputs.view(-1, inputs.shape[-1])
-        router_logits = self.router(inputs_squashed)
-        router_logits = router_logits*mask
-        sum_of_logits = router_logits.sum()
-        if sum_of_logits < 1e-20:
-            router_logits = torch.nn.functional.one_hot(mask.shape[0], num_classes= mask.shape[0]+1)
-        else:
-            router_logits = torch.cat((router_logits, torch.tensor([0])))
-        # note that selected experts will be the same for all orders:
-        # softmax doesnt change top-k, but the weights are different
-        if self.softmax_order == "softmax_topk":
-            all_probs = F.softmax(router_logits, dim=1)
-            weights, selected_experts = torch.topk(all_probs, self.top_k)
-        elif self.softmax_order == "topk_softmax":
-            weights, selected_experts = torch.topk(router_logits, self.top_k)
-            weights = F.softmax(weights, dim=-1)
-        else:
-            raise ValueError(f"Unknown softmax_order: {self.softmax_order}")
-
-        results = torch.zeros_like(inputs_squashed)
-        # naive looping over experts
-        for i, expert in enumerate(self.experts):
-            batch_idx, nth_expert = torch.where(selected_experts == i)
-            output, _ = expert(inputs_squashed[batch_idx])
-            results[batch_idx] += weights[batch_idx, nth_expert, None] * output
-
-        # return results and router logits (for aux loss calculation later)
-        return results.view_as(inputs), {
-            "router_logits": router_logits,
-            "selected_experts": selected_experts,
-        }
-
-class TimeDependantMoE(nn.Module):
-    def __init__(self, config, mlp, date_list, k):
-        super().__init__()
-        self._date_list = date_list
-        self._k = k
-        config.moe_num_experts = (len(date_list)+1)*k
-        self._mask_moe = MaskedMoE(config, mlp)
-
-
-    def forward(self, x, date):
-        date_idx = bisect.bisect_left(self.date_list, date)
-        mask = torch.zeros(self._k * (len(self._date_list)+1))
-        mask[0: (date_idx+1)*self._k] = 1.0
-        return self._mask_moe(x, mask)
     
 
-class MaskedMoE2(MoE):
+class MaskedMoE(MoE):
     def __init__(self, config, mlp):
         super().__init__(config, mlp)
         self._sequence_length = config.sequence_length
@@ -173,10 +120,13 @@ class MaskedMoE2(MoE):
         }
     
 
-class TimeDependantMoE2(nn.Module):
+class TimeDependantMoE(nn.Module):
     def __init__(self, config, mlp):
         super().__init__()
-        self._mask_moe = MaskedMoE2(config, mlp)
+        self._num_experts = config.moe_num_experts
+        self._mask_moe = MaskedMoE(config, mlp)
 
-    def forward(self, x, mask):
-        return self._mask_moe(x, mask)
+    def forward(self, x, date):
+        mask_date = torch.zeros(self._num_experts)
+        mask_date[:date] = 1.0
+        return self._mask_moe(x, mask_date)

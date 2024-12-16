@@ -172,7 +172,7 @@ def eval(model, val_dataset,config, device='cpu'):
     return 0.0, val_loss, val_perplexity
 
 
-def train(model, config, run_name, fineweb_dataset, fineweb_dataset_val, nb_points, device, wandb, gradient_accumulation_steps):
+def train(model, config, run_name, fineweb_dataset, fineweb_dataset_val, device, wandb, gradient_accumulation_steps):
     """Train the model
 
     Args:
@@ -188,7 +188,8 @@ def train(model, config, run_name, fineweb_dataset, fineweb_dataset_val, nb_poin
 
     """
     lr = 1e-3
-    total_steps = nb_points // (config.batch_size * gradient_accumulation_steps) + 1,
+    nb_points = len(fineweb_dataset)
+    total_steps = nb_points // (config.batch_size * gradient_accumulation_steps) + 1
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=0.1)
     scheduler = torch.optim.lr_scheduler.OneCycleLR(
         optimizer=optimizer,

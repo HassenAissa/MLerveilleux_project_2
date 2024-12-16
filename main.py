@@ -20,7 +20,7 @@ moe_routings = [None, "standard_gating", "masked"]
 run_names = ["GPT2", "MoE", "time dependent MoE"]
 
 #load the dataset
-nb_points = 8_000_000
+nb_points = 50_000
 fineweb_dataset, min_date, max_date = get_fineweb_dataset(nb_points)
 
 gradient_accumulation_steps = 2
@@ -77,20 +77,17 @@ for moe_routing, run_name in zip(moe_routings, run_names):
     print(f"Total number of parameters: {total_params}")
 
     nb_points = len(fineweb_dataset)
-    print("nb tokens to see ", nb_points * config.sequence_length)
 
 
     # Training 
     utils.train(
         moe, 
-        fineweb_dataset, 
-        fineweb_dataset_val, 
-        nb_points,
         config, 
         run_name,
-        device=device, 
+        fineweb_dataset, 
+        fineweb_dataset_val, 
+        device, 
         wandb,
-        gradient_accumulation_steps
-    )
+        gradient_accumulation_steps)
 
     wandb.finish()

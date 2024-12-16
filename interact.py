@@ -12,12 +12,12 @@ INPUT_SYMBOL = "~>"
 def choices(clist, text="Please choose one of the following options: "):
     print(text)
     for i, c in enumerate(clist):
-        print(str(i) + ") " + c)
-    while c== None or c.isnumeric() == False or c >= len(clist):
+        print(str(i) + ") " + str(c))
+    while c== None or c.isnumeric() == False or int(c) >= len(clist):
         c = input(">")
     return clist[int(c)]
 
-def run_query(query,date, model, tokenizer, config, max_answer_len = 100):
+def run_query(query,date, model, tokenizer, config, max_answer_len = 100, device="cuda"):
     ctx_window_size = config.sequence_length
     query_tokens = tokenizer.encode_ordinary(query)
     query_len = len(query_tokens)
@@ -28,8 +28,9 @@ def run_query(query,date, model, tokenizer, config, max_answer_len = 100):
     answer_count = 0
     new_token = None
     while answer_count < max_answer_len and new_token != tokenizer.eot_token:
+        query_tokens = query_tokens.to(device)
         output = model(query_tokens, date, get_logits=True, moe=config.moe)
-        print(output["logits"])
+        print(output["logits"].shape)
         answer_count += 1
 
 
@@ -40,7 +41,7 @@ def run_query(query,date, model, tokenizer, config, max_answer_len = 100):
 
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     print("*** Interact with the trained models programm ***")
@@ -76,7 +77,7 @@ if __name__ == "main":
 
     query = input(INPUT_SYMBOL)
     while query != STOP_QUERY:
-
+        run_query(query, None, model, tokenizer, config)
         query = input(INPUT_SYMBOL)
 
 

@@ -16,11 +16,11 @@ torch.set_default_dtype(torch.bfloat16)
 SEED = 42
 
 # define the types of models to run
-moe_routings = [None, "standard_gating", "masked"]
-run_names = ["GPT2", "MoE", "time dependent MoE"]
+moe_routings = ["masked"]
+run_names = ["time_dependent_MoE"]
 
 #load the dataset
-nb_points = 50_000
+nb_points = 8_000_000
 fineweb_dataset, min_date, max_date = get_fineweb_dataset(nb_points)
 
 gradient_accumulation_steps = 2

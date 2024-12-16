@@ -14,7 +14,7 @@ import os
 SEED = 42
 random.seed(SEED)
 print("RANDOM SEED SET TO", SEED)
-
+SEQUENCE_LENGTH = 1024
 num_proc = max(4, cpu_count())
 
 
@@ -32,7 +32,7 @@ def process_data(example, min_date, max_date, tokenizer):
     text_tokens = tokenizer.encode_ordinary(example["text"])
     text_tokens.append(tokenizer.eot_token)
     date = (int(example["date"][:4]) - min_date) // 2 + 1
-    return {"tokens": text_tokens, "date": date}
+    return {"tokens": text_tokens, "date": date}
 
 
 def get_fineweb_dataset(nb_points, num_proc=num_proc):
@@ -75,8 +75,8 @@ def get_fineweb_dataset(nb_points, num_proc=num_proc):
 
     with multiprocessing.Pool(128) as pool:
         for j, text in tqdm(enumerate(text_years)):
-            for i in range(0, len(text)-1025, 1025):
-                new_dataset["tokens"].append(text[i:i+1025])
+            for i in range(0, len(text)-(SEQUENCE_LENGTH+1), (SEQUENCE_LENGTH+1)):
+                new_dataset["tokens"].append(text[i:i+(SEQUENCE_LENGTH+1)])
                 new_dataset["date"].append(j+1)
     dataset = Dataset.from_dict(new_dataset)
 

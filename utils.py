@@ -61,7 +61,6 @@ def get_fineweb_dataset(nb_points, num_proc=num_proc):
         num_proc=num_proc,
         fn_kwargs={"min_date": min_date, "max_date": max_date, "tokenizer": tokenizer},
     )
-    print(tokenized)
 
     text_years = [[],[],[],[],[],[]]
     with multiprocessing.Pool(128) as pool:
@@ -217,7 +216,7 @@ def train(model, config, run_name, fineweb_dataset, fineweb_dataset_val, device,
             batch["tokens"] = torch.tensor(batch["tokens"]).to(device)
             batch["date"] = torch.tensor(batch["date"]).to(device)
 
-            output = model(batch["tokens"][:, :-1].clone(), batch["date"],
+            output = model(batch["tokens"][:, :-1].clone(), batch["date"].clone(),
                          targets=batch["tokens"][:, 1:].clone(), get_logits=False, moe=config.moe)
 
             loss = output["loss"]

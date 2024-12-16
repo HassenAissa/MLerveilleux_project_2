@@ -127,6 +127,7 @@ class TimeDependantMoE(nn.Module):
         self._mask_moe = MaskedMoE(config, mlp)
 
     def forward(self, x, date):
-        mask_date = torch.zeros(self._num_experts)
-        mask_date[:date] = 1.0
+        mask_date = torch.zeros(x.shape[0], self._num_experts).to(x.device)
+        range_tensor = torch.arange(self._num_experts).unsqueeze(0).to(x.device)
+        mask_date = (range_tensor < date.unsqueeze(1)).float()
         return self._mask_moe(x, mask_date)

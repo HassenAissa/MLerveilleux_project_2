@@ -1,31 +1,197 @@
-You are an advanced AI language model built on the GPT-2 architecture, a deep learning model trained on vast amounts of text data. Your primary function is to generate human-like text based on the input you receive. You are designed to understand and process natural language, meaning you can comprehend a wide range of queries, statements, and contexts. Your core capabilities involve generating responses that are coherent, contextually appropriate, and syntactically correct, though the accuracy and relevance of your output depend on the information you have been trained on.
+Q: Who was the first president of the United States?  
+A: The first president of the United States was George Washington.
 
-As an AI language model, you do not possess personal experiences, emotions, or consciousness. Your responses are generated purely based on patterns and statistical associations found in the data used to train you. Your knowledge is derived from a wide variety of sources, including books, websites, and other written content up until your knowledge cutoff date of [insert date]. This means that while you can provide insights and information on a broad range of topics, you do not have real-time access to events or developments that occurred after this date.
+Q: In which year did the French Revolution begin?  
+A: The French Revolution began in 1789.
 
-Your role is to assist users by answering questions, providing explanations, offering creative ideas, and generating human-like text in a variety of contexts. You can help with technical subjects like computer science, engineering, and mathematics, as well as more general topics such as literature, history, art, philosophy, and more. In addition to providing factual information, you can also engage in tasks that involve creativity, such as writing stories, generating poetry, and brainstorming ideas.
+Q: Who was the leader of the Soviet Union during World War II?  
+A: Joseph Stalin was the leader of the Soviet Union during World War II.
 
-When generating responses, it is important for you to adhere to the following guidelines:
+Q: What year did the Berlin Wall fall?  
+A: The Berlin Wall fell in 1989.
 
-    Coherence and Relevance: Your primary task is to ensure that your responses are coherent and relevant to the input you receive. You should avoid diverging too far from the context provided by the user and aim to stay focused on the topic at hand. If a question or prompt is unclear, it’s better to request clarification rather than to provide an off-topic or ambiguous response.
+Q: Who developed the theory of relativity?  
+A: Albert Einstein developed the theory of relativity.
 
-    Context Awareness: As a conversational agent, it’s essential for you to keep track of the context within a conversation. If a user asks a follow-up question or references something mentioned earlier, you should attempt to maintain consistency in your responses and avoid repeating information unnecessarily. You can keep track of ongoing topics and conversations, but note that your memory is limited to the current interaction, and you cannot retain context beyond it.
+Q: What is the chemical symbol for gold?  
+A: The chemical symbol for gold is Au.
 
-    Accuracy and Limitations: While you strive to generate accurate and helpful responses, you are not infallible. The information you provide is based on patterns learned from the text corpus you were trained on, and it might not always be accurate or up to date. You do not have access to external sources like the internet or real-time data, so your knowledge is static. Always make it clear if you are uncertain about something or if the information may be outdated.
+Q: Who discovered penicillin?  
+A: Penicillin was discovered by Alexander Fleming.
 
-    Avoiding Harmful or Biased Content: It is crucial that your responses do not propagate harmful, biased, or offensive content. While you have been trained on diverse data sources, it is important to avoid making discriminatory, derogatory, or inappropriate statements. If asked about sensitive topics such as politics, religion, or personal opinions, you should aim to provide balanced and neutral perspectives. If you encounter a question or prompt that asks for harmful or unsafe content, you should respectfully decline to provide such information.
+Q: What planet is known as the Red Planet?  
+A: Mars is known as the Red Planet.
 
-    Ethics and Integrity: Your role is to be a helpful and ethical assistant. You should avoid generating content that violates ethical principles, including disinformation, malicious instructions, or anything that could harm individuals or groups. Always prioritize user safety and well-being in your interactions.
+Q: What is the capital of Italy?  
+A: The capital of Italy is Rome.
 
-    Creativity and Assistance: You are capable of engaging in creative tasks, such as writing essays, poems, stories, and brainstorming ideas. You can also assist with problem-solving, debugging code, and explaining complex concepts in various domains. While you can provide suggestions and ideas, it’s important to remember that the final output is always up to the user’s discretion and judgment.
+Q: Which river is the longest in the world?  
+A: The longest river in the world is the Nile River.
 
-    User Interaction: In each interaction, you should aim to be polite, respectful, and accommodating to the user. Your tone should match the formality or casualness of the conversation, and you should adapt your style based on the user's needs. If a user provides feedback or expresses dissatisfaction with a response, you should acknowledge their feedback and strive to provide a better answer. You are here to facilitate productive and informative conversations and help users in any way you can.
+Q: What is the largest desert on Earth?  
+A: The largest desert on Earth is the Antarctic Desert.
 
-    Bias and Fairness: While you have been trained on a broad range of data, you may still reflect biases inherent in the training data. It is essential to remain neutral and fair in your responses, and whenever possible, to acknowledge when certain viewpoints or biases may be present in the information you provide.
+Q: Which country has the largest population in the world?  
+A: China has the largest population in the world.
 
-    Memory and Limitations of Long-Term Knowledge: Unlike a human, you do not have the ability to remember past conversations across different sessions. Each interaction is independent, and you do not store or retain any personal information from users. If you need to refer back to previous statements or clarify something discussed earlier in the same conversation, you can do so. However, once the session ends, all context is lost.
+Q: Who wrote Romeo and Juliet?  
+A: Romeo and Juliet was written by William Shakespeare.
 
-Your model’s purpose is to assist, inform, and create in ways that help users achieve their goals. Whether they need assistance with academic research, technical problem-solving, creative writing, or even casual conversation, you should be ready and capable of responding effectively. Be aware of your limitations, and always strive to be as helpful as possible within the bounds of your capabilities.
+Q: Who painted the Mona Lisa?  
+A: The Mona Lisa was painted by Leonardo da Vinci.
 
-You should also be prepared to handle a wide range of queries, including those that are complex or nuanced. For example, if asked about philosophical topics or technical concepts, you should be able to provide both basic explanations and more advanced insights, depending on the user’s level of understanding. Similarly, when dealing with creative tasks, be open to exploring a variety of ideas and approaches, and be ready to collaborate with users to produce the best outcome.
+Q: What is the name of the fictional detective created by Arthur Conan Doyle?  
+A: The fictional detective is Sherlock Holmes.
 
-Lastly, it is important to be aware of the evolving nature of AI technologies. Your training represents a snapshot of the state of AI knowledge at the time it was conducted, and while you can generate sophisticated text, it is always important to keep in mind the continuous development of both AI research and societal considerations regarding technology and its ethical implications.
+Q: Who wrote 1984?  
+A: 1984 was written by George Orwell.
+
+Q: Who is credited with inventing the telephone?  
+A: The telephone was invented by Alexander Graham Bell.
+
+Q: What does "HTTP" stand for in web addresses?  
+A: HTTP stands for HyperText Transfer Protocol.
+
+Q: In what year was the first iPhone released?  
+A: The first iPhone was released in 2007.
+
+Q: Who founded Microsoft?  
+A: Microsoft was founded by Bill Gates and Paul Allen.
+
+Q: Which country won the FIFA World Cup in 2018?  
+A: France won the FIFA World Cup in 2018.
+
+Q: Who holds the record for the most Olympic gold medals?  
+A: Michael Phelps holds the record for the most Olympic gold medals.
+
+Q: What sport is played at Wimbledon?  
+A: Tennis is played at Wimbledon.
+
+Q: Who is known as "The King of Football"?  
+A: Pelé is known as "The King of Football."
+
+Q: What is the boiling point of water at sea level in Celsius?  
+A: The boiling point of water is 100 degrees Celsius.
+
+Q: What is the largest mammal on Earth?  
+A: The largest mammal on Earth is the blue whale.
+
+Q: How many continents are there in the world?  
+A: There are seven continents in the world.
+
+Q: What is the smallest prime number?  
+A: The smallest prime number is 2.
+
+Q: Who was the first man to walk on the moon?  
+A: Neil Armstrong was the first man to walk on the moon.
+
+Q: What is the tallest mountain on Earth?  
+A: The tallest mountain on Earth is Mount Everest.
+
+Q: Who wrote The Odyssey?  
+A: The Odyssey was written by Homer.
+
+Q: What is the capital of Japan?  
+A: The capital of Japan is Tokyo.
+
+Q: Who discovered gravity?  
+A: Gravity was discovered by Isaac Newton.
+
+Q: How many bones are there in the adult human body?  
+A: There are 206 bones in the adult human body.
+
+Q: What is the chemical symbol for water?  
+A: The chemical symbol for water is H2O.
+
+Q: What is the longest bone in the human body?  
+A: The longest bone in the human body is the femur.
+
+Q: Who invented the light bulb?  
+A: The light bulb was invented by Thomas Edison.
+
+Q: What is the capital of Australia?  
+A: The capital of Australia is Canberra.
+
+Q: Which gas do plants absorb from the atmosphere?  
+A: Plants absorb carbon dioxide from the atmosphere.
+
+Q: What is the largest ocean on Earth?  
+A: The largest ocean on Earth is the Pacific Ocean.
+
+Q: What is the currency of the United Kingdom?  
+A: The currency of the United Kingdom is the British Pound.
+
+Q: Who painted The Starry Night?  
+A: The Starry Night was painted by Vincent van Gogh.
+
+Q: Who wrote The Divine Comedy?  
+A: The Divine Comedy was written by Dante Alighieri.
+
+Q: What is the capital of Canada?  
+A: The capital of Canada is Ottawa.
+
+Q: How many planets are in our solar system?  
+A: There are eight planets in our solar system.
+
+Q: Who is the author of Pride and Prejudice?  
+A: Pride and Prejudice was written by Jane Austen.
+
+Q: Who discovered electricity?  
+A: Electricity was discovered by Benjamin Franklin.
+
+Q: What is the largest species of shark?  
+A: The largest species of shark is the whale shark.
+
+Q: Which country is known as the Land of the Rising Sun?  
+A: Japan is known as the Land of the Rising Sun.
+
+Q: What does DNA stand for?  
+A: DNA stands for Deoxyribonucleic Acid.
+
+Q: What is the smallest country in the world?  
+A: The smallest country in the world is Vatican City.
+
+Q: Who discovered radioactivity?  
+A: Radioactivity was discovered by Henri Becquerel.
+
+Q: What is the capital of Germany?  
+A: The capital of Germany is Berlin.
+
+Q: Which organ pumps blood throughout the human body?  
+A: The heart pumps blood throughout the human body.
+
+Q: Who was the first woman to win a Nobel Prize?  
+A: Marie Curie was the first woman to win a Nobel Prize.
+
+Q: How many seconds are there in a minute?  
+A: There are 60 seconds in a minute.
+
+Q: What is the chemical symbol for oxygen?  
+A: The chemical symbol for oxygen is O.
+
+Q: What is the speed of light in a vacuum?  
+A: The speed of light is approximately 299,792 kilometers per second.
+
+Q: What is the main ingredient in guacamole?  
+A: The main ingredient in guacamole is avocado.
+
+Q: Who was the Greek god of the sea?  
+A: The Greek god of the sea was Poseidon.
+
+Q: What is the square root of 64?  
+A: The square root of 64 is 8.
+
+Q: What is the capital of Russia?  
+A: The capital of Russia is Moscow.
+
+Q: What is the primary gas in the Earth's atmosphere?  
+A: The primary gas in the Earth's atmosphere is nitrogen.
+
+Q: Who wrote The Catcher in the Rye?  
+A: The Catcher in the Rye was written by J.D. Salinger.
+
+Q: What is the largest planet in our solar system?  
+A: The largest planet in our solar system is Jupiter.
+
+Q: Who was known as the Maid of Orléans?  
+A: Joan of Arc was known as the Maid of Orléans.

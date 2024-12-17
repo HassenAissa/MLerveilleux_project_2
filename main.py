@@ -16,8 +16,8 @@ torch.set_default_dtype(torch.bfloat16)
 SEED = 42
 
 # define the types of models to run
-moe_routings = ["masked"]
-run_names = ["time_dependent_MoE"]
+moe_routings = ["standard_gating"]
+run_names = ["standard_gating_final"]
 
 #load the dataset
 nb_points = 8_000_000

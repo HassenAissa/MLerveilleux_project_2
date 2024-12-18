@@ -19,7 +19,7 @@ The final perplexities we get are the following
 | Model type | Perplexity    |
 | :---:   | :---: |
 | GPT2 | 41.86  | 
-| MoE    |  |
+| MoE    | 32.09 |
 | Time dependent    | 33.11 |
 
 For more details, please check the wandb run here: : https://wandb.ai/hassen-aissa1/time_dependant_llm/reports/GPTime-Time-Dependent-LLM-training--VmlldzoxMDY0ODE3Mg<br>

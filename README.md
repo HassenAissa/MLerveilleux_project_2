@@ -13,7 +13,7 @@ The training of the Time Dependent on Fineweb10BT dataset with 8M sequences whic
 We use a batch size of 64 with gradient accumulation of 2 and a cosine scheduler with a maximum learning rate of 1e-3 that is reduced to 1e-4. (CUDA is necessary for the training)<br>
 
 
-TODOOO:add plots
+![Time dependent training curve](assets/time_dependent.png)
 
 The final perplexities we get are the following
 | Model type | Perplexity    |

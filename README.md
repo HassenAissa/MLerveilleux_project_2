@@ -22,7 +22,7 @@ The final perplexities we get are the following
 | MoE    |  |
 | Time dependent    | 33.11 |
 
-For more details, please check the wandb run here: TODOOOOOO<br>
+For more details, please check the wandb run here: : https://wandb.ai/hassen-aissa1/time_dependant_llm/reports/GPTime-Time-Dependent-LLM-training--VmlldzoxMDY0ODE3Mg<br>
 If you want to implement other types of masking, this can be done in `moe.py` as we provide a general class `MaskedMoE` that is used to implement `TimeDependentMoE` and could be used for other types of masking (example: Age masking)
 # Interact with the models
 In order to have a hand on experience on our models, we provide the script `interact.py` which allows you to ask questions and requests to our model and compare their behaviors directly. 

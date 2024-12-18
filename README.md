@@ -26,16 +26,44 @@ For more details, please check the wandb run here: : https://wandb.ai/hassen-ais
 If you want to implement other types of masking, this can be done in `moe.py` as we provide a general class `MaskedMoE` that is used to implement `TimeDependentMoE` and could be used for other types of masking (example: Age masking)
 # Interact with the models
 In order to have a hand on experience on our models, we provide the script `interact.py` which allows you to ask questions and requests to our model and compare their behaviors directly. 
-The script wil ask you to set provide the path to the model you want to test, asks about the type of the model, the temperature you want to set and finally the request you want to send to the model. 
-If your model is a the Time Dependent, the script will also ask for the year of inference you want to set.<br>
-Example question: <br>
+
+The script will prompt the user for the following inputs:
+- Path to the saved weights of the model
+- The type of the model: GPT-2 Baseline or the MoE Baseline or the Time Dependant MoE
+- The Temperature for temperature sampling
+
+After this the user will be prompted with "~>" and can type its request there.
+
+The file prompt_frame.txt contains a series of question and answer in the following format:
+```
+Q: Who wrote Romeo and Juliet?  
+A: Romeo and Juliet was written by William Shakespeare.
+
+Q: Who painted the Mona Lisa?  
+A: The Mona Lisa was painted by Leonardo da Vinci.
+
+Q: What is the name of the fictional detective created by Arthur Conan Doyle?  
+A: The fictional detective is Sherlock Holmes.
+```
+The content of this file will be concatenated with the users query. This helps to give to the model a context and an idea of the task it has to solve.
+Therefore, if the user wants to have the best performances it should query the model using this format: 
+
+```Q: [Your question here]```
+
+---
+***NOTE***
+If your model is the Time Dependent MoE, the script will also ask for the year of inference to set.<br>
+---
+Example of questions : 
+```
 [User Input]: Q: What are the most common
 first symptoms of COVID-19? <br>
+
 [Masked MoE - 2020 selected]: A: The
 first symptoms of COVID-19 are: fever,
 fever, diarrhea, fever, episodes of
 fever, and shortness of breath.
-
+```
 
 
 # Refences:

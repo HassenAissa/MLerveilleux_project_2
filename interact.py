@@ -4,7 +4,8 @@ from config import Config
 import tiktoken
 import torch.nn.functional as F
 
-MOE_ROUTINGS = [ None, "standard_gating", "masked"]
+MOE_ROUTINGS = { "GPT-2 Baseline":None, "GPT-2 MoE Baseline ": "standard_gating", "Time Dependant MoE": "masked"}
+
 MAX_DATE = 2024
 MIN_DATE = 2013
 STOP_QUERY = "STOP"
@@ -83,7 +84,7 @@ if __name__ == "__main__":
     print("Copyright Hassen, Lysandre and Pierre")
 
     model_path = input("Enter your model path here : ")
-    routing = choices(MOE_ROUTINGS)
+    routing = MOE_ROUTINGS[choices(list(MOE_ROUTINGS.keys()))]
     config = Config(**{
         "moe_num_experts": (MAX_DATE - MIN_DATE + 1) // 2,
         "moe_softmax_order": "softmax_topk",

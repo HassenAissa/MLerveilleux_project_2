@@ -20,7 +20,7 @@ moe_routings = [None, "masked", "standard_gating"]
 run_names = ["GPT2", "time_dependent", "standard_gating_final"]
 
 #load the dataset
-nb_points = 100_000
+nb_points = 2_000_000
 fineweb_dataset, min_date, max_date = get_fineweb_dataset(nb_points)
 
 gradient_accumulation_steps = 2

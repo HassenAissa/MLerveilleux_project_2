@@ -170,7 +170,7 @@ def eval(model, val_dataset,config, device='cpu'):
     val_loss = torch.stack(loss_list_val).mean().item()
     val_perplexity = 2.71828 ** val_loss
 
-    return 0.0, val_loss, val_perplexity
+    return val_loss, val_perplexity
 
 
 def train(model, config, run_name, fineweb_dataset, fineweb_dataset_val, device, wandb, gradient_accumulation_steps):
@@ -246,10 +246,9 @@ def train(model, config, run_name, fineweb_dataset, fineweb_dataset_val, device,
             if (i // config.batch_size) % val_curve_freq == 0:
                 # Evaluate the model on the validation set
                 model.eval()
-                val_acc, val_loss, val_perplexity = eval(model, fineweb_dataset_val, config, device=device)
+                val_loss, val_perplexity = eval(model, fineweb_dataset_val, config, device=device)
                 wandb.log({
                     "val/loss":val_loss,
-                    "val/acc":val_acc,
                     "val/perplexity":val_perplexity
                 }, step = i//config.batch_size)
 

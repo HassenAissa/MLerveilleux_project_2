@@ -51,7 +51,7 @@ Therefore, if the user wants to have the best performances it should query the m
 ```Q: [Your question here]```
 
 ---
-***NOTE***
+***NOTE 1:***
 If your model is the Time Dependent MoE, the script will also ask for the year of inference to set.<br>
 ---
 Example of questions : 
@@ -65,6 +65,12 @@ fever, diarrhea, fever, episodes of
 fever, and shortness of breath.
 ```
 
+
+---
+***NOTE 2:***
+As the training is very long, we provide pretrained models on this drive:
+---
+https://drive.google.com/drive/u/1/folders/1ODVqddfcViq9rMAOkrkZNvce29Tn0h8q
 
 # Refences:
 The `aux_losses.py`, `moe.py` and `gpt.py` were originally provided from https://github.com/epfml/llm-baselines and then impreoved for Time Depenndent implementation and better performance during training.

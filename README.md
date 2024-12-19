@@ -1,5 +1,8 @@
 # GPTime: Time dependent MoE implementation
 
+
+
+
 This project explores time dependent LLMs by implementing a time dependent Mixture of Experts on GPT2. <br>
 `main.py` allows to train GPT2, standard gating MoE and Time Dependent MoE in order to be able to compare their performance. 
 In order to chose which models to run, you need to specify the `moe_routings` as follows:
@@ -25,6 +28,15 @@ The final perplexities we get are the following
 For more details, please check the wandb run here: : https://wandb.ai/hassen-aissa1/time_dependant_llm/reports/GPTime-Time-Dependent-LLM-training--VmlldzoxMDY0ODE3Mg<br>
 If you want to implement other types of masking, this can be done in `moe.py` as we provide a general class `MaskedMoE` that is used to implement `TimeDependentMoE` and could be used for other types of masking (example: Age masking)
 # Interact with the models
+
+## Installation
+You need to have python 3.10.0 installed in order to run the project.
+You can install the requirements with the following command:
+```
+pip install -r requirements.txt 
+```
+WARNING: Pip might raise an error if your version of python is not python 3.10.0!
+## Query the Models
 In order to have a hand on experience on our models, we provide the script `interact.py` which allows you to ask questions and requests to our model and compare their behaviors directly. 
 
 The script will prompt the user for the following inputs:
